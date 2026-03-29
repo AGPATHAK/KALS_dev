@@ -1,0 +1,718 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Kannada Conjuncts Trainer</title>
+
+  <link rel="manifest" href="manifest.json" />
+  <meta name="theme-color" content="#0f172a" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="ಜೋಡಕ್ಷರ" />
+  <link rel="apple-touch-icon" href="apple-touch-icon.png" />
+  <link rel="icon" type="image/png" sizes="32x32" href="favicon.png" />
+
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=Noto+Sans+Kannada:wght@500;700&display=swap" rel="stylesheet" />
+
+  <style>
+    body { font-family: Inter, system-ui, sans-serif; }
+    .kn { font-family: 'Noto Sans Kannada', Inter, system-ui, sans-serif; }
+    .shadow-soft { box-shadow: 0 6px 24px rgba(2,6,23,0.06), 0 2px 8px rgba(2,6,23,0.04); }
+    .screen { display:none; }
+    .screen.active { display:block; }
+    .timer-ring {
+      width: 48px; height: 48px;
+      display: grid; place-items: center;
+      font-weight: 600; font-size: 1.1rem; color: #334155;
+    }
+    .timer-ring::after { content: attr(data-time); }
+
+    /* Reveal panel animation */
+    #reveal-panel {
+      max-height: 0; overflow: hidden;
+      transition: max-height 0.35s ease, opacity 0.35s ease;
+      opacity: 0;
+    }
+    #reveal-panel.open {
+      max-height: 160px;
+      opacity: 1;
+    }
+  </style>
+</head>
+
+<body class="bg-slate-50 text-slate-900">
+<div class="max-w-3xl mx-auto p-6">
+
+  <!-- Header -->
+  <header class="flex items-center gap-3 mb-6">
+    <div class="text-xl">🕉️</div>
+    <h1 class="text-2xl font-bold">Kannada Conjuncts Trainer</h1>
+    <div class="ml-auto text-sm text-slate-500">ಜೋಡಕ್ಷರ</div>
+  </header>
+
+  <!-- ===== Home ===== -->
+  <section id="screen-home" class="screen active">
+    <div class="bg-white rounded-2xl shadow-soft p-8 text-center space-y-6">
+
+      <h2 class="text-lg text-slate-600">ಜೋಡಕ್ಷರ → देवनागरी</h2>
+
+      <div id="quick-stats" class="grid grid-cols-3 gap-4"></div>
+      <p id="last-session-info" class="text-slate-600"></p>
+
+      <div class="grid sm:grid-cols-2 gap-4 text-left">
+        <div>
+          <label class="block text-sm font-medium mb-2">Number of Cards</label>
+          <input id="cards-count" type="number" min="5" max="100" value="20"
+            class="w-full rounded-lg border border-slate-200 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-slate-300" />
+        </div>
+        <div>
+          <label class="block text-sm font-medium mb-2">Timer</label>
+          <select id="timer-seconds"
+            class="w-full rounded-lg border border-slate-200 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-slate-300">
+            <option value="6" selected>6s</option>
+            <option value="4">4s</option>
+            <option value="3">3s</option>
+          </select>
+        </div>
+      </div>
+
+      <button id="btn-start"
+        class="w-full py-4 bg-black text-white rounded-xl text-lg font-semibold hover:bg-slate-800">
+        Start Session
+      </button>
+
+      <button id="btn-weak"
+        class="w-full py-4 border rounded-xl text-lg font-semibold hover:bg-slate-50">
+        Practice Weak Conjuncts (&lt;99%)
+      </button>
+
+      <button id="btn-toggle-history"
+        class="w-full py-4 border rounded-xl text-lg hover:bg-slate-50">
+        Show History
+      </button>
+
+      <div id="history-panel" class="hidden text-left">
+        <div class="rounded-xl border border-slate-200 bg-slate-50 p-3">
+          <div class="flex justify-between text-xs mb-2">
+            <span>Recent Runs</span>
+            <button id="btn-clear-history" class="underline">Clear</button>
+          </div>
+          <ul id="history-list" class="text-xs divide-y"></ul>
+        </div>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- ===== Play ===== -->
+  <section id="screen-play" class="screen">
+    <div class="bg-white rounded-2xl shadow-soft p-8">
+
+      <div class="flex items-center mb-6">
+        <div class="font-semibold text-slate-600">Practice</div>
+        <div class="ml-auto">
+          <div id="timer-ring" class="timer-ring" data-time=""></div>
+        </div>
+      </div>
+
+      <div class="w-full bg-slate-100 rounded-full h-1.5 mb-6">
+        <div id="progress-bar" class="bg-slate-800 h-1.5 rounded-full transition-all duration-300" style="width:0%"></div>
+      </div>
+
+      <div class="text-center mb-8">
+        <div id="prompt" class="kn text-8xl font-bold leading-tight"></div>
+      </div>
+
+      <div id="options-box" class="space-y-3 max-w-md mx-auto"></div>
+
+      <!-- Reveal panel: shown after each answer -->
+      <div id="reveal-panel" class="max-w-md mx-auto mt-5 rounded-xl bg-slate-50 border border-slate-200 px-6 py-4 text-center">
+        <div id="reveal-word" class="kn text-4xl font-bold text-slate-800 mb-1"></div>
+        <div id="reveal-meaning" class="text-slate-500 text-sm"></div>
+      </div>
+
+      <div class="mt-6 text-sm text-slate-500 flex justify-between">
+        <div>Card <span id="card-index">1</span>/<span id="card-total">20</span></div>
+        <div>Score <span id="score">0</span></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== Results ===== -->
+  <section id="screen-results" class="screen">
+    <div class="bg-white rounded-2xl shadow-soft p-8">
+
+      <h2 class="text-2xl font-bold mb-6">Session Complete</h2>
+
+      <div class="grid sm:grid-cols-3 gap-4">
+        <div class="rounded-xl border p-4">
+          <div class="text-sm text-slate-500">Accuracy</div>
+          <div id="stat-acc" class="text-2xl font-bold">—</div>
+        </div>
+        <div class="rounded-xl border p-4">
+          <div class="text-sm text-slate-500">Avg Response</div>
+          <div id="stat-avg" class="text-2xl font-bold">—</div>
+        </div>
+        <div class="rounded-xl border p-4">
+          <div class="text-sm text-slate-500">Fastest / Slowest</div>
+          <div id="stat-range" class="text-2xl font-bold">—</div>
+        </div>
+      </div>
+
+      <div class="mt-6">
+        <h3 class="font-semibold mb-2">Wrong Items</h3>
+        <ul id="wrong-list" class="space-y-2 text-sm"></ul>
+      </div>
+
+      <div class="mt-8 flex gap-3">
+        <button id="btn-retry-mistakes"
+          class="flex-1 py-3 border rounded-xl hover:bg-slate-50">
+          Retry Mistakes
+        </button>
+        <button id="btn-newrun"
+          class="flex-1 py-3 rounded-xl bg-black text-white hover:bg-slate-800">
+          Home
+        </button>
+      </div>
+
+    </div>
+  </section>
+
+</div>
+
+<script>
+(() => {
+  // ── Helpers ──────────────────────────────────────────────────
+  const qs  = (sel, el=document) => el.querySelector(sel);
+  const qsa = (sel, el=document) => Array.from(el.querySelectorAll(sel));
+  const screens = {
+    home:    qs('#screen-home'),
+    play:    qs('#screen-play'),
+    results: qs('#screen-results')
+  };
+  function show(which){
+    Object.values(screens).forEach(s => s && s.classList.remove('active'));
+    if(screens[which]) screens[which].classList.add('active');
+  }
+  function escapeHtml(s){
+    return String(s).replace(/[&<>"']/g, c =>
+      ({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[c]));
+  }
+  function shuffle(a){
+    for(let i=a.length-1;i>0;i--){
+      const j=Math.floor(Math.random()*(i+1)); [a[i],a[j]]=[a[j],a[i]];
+    }
+    return a;
+  }
+  function pick(arr){ return arr[Math.floor(Math.random()*arr.length)]; }
+
+  // ── Embedded Deck ─────────────────────────────────────────────
+  // Each entry:
+  //   prompt      : Kannada conjunct
+  //   options     : 4 Devanagari choices (pipe-joined in spirit; stored as array)
+  //   correctIdx  : index of correct option
+  //   group       : first consonant of conjunct — used for phonetically-similar distractors
+  //   words       : [{kn, meaning}] — 2-3 examples, one picked randomly on reveal
+
+  const EMBEDDED_DECK = [
+    // ── Group 1: Geminates ──────────────────────────────────────
+    { id:"JK001", prompt:"ಕ್ಕ", group:"ಕ", options:["क्क","क्त","क्ष","ग्ग"], correctIdx:0,
+      words:[{kn:"ಅಕ್ಕ",meaning:"मोठी बहीण"},{kn:"ಮಕ್ಕಳು",meaning:"मुले"},{kn:"ಚಕ್ಕೆ",meaning:"झाडाची साल"}] },
+
+    { id:"JK002", prompt:"ತ್ತ", group:"ತ", options:["त्त","न्त","त्र","द्द"], correctIdx:0,
+      words:[{kn:"ಹತ್ತು",meaning:"दहा"},{kn:"ಮತ್ತು",meaning:"आणि"},{kn:"ಪತ್ತೆ",meaning:"शोध / पत्ता"}] },
+
+    { id:"JK003", prompt:"ಲ್ಲ", group:"ಲ", options:["ल्ल","ळ्ळ","ल्व","न्ल"], correctIdx:0,
+      words:[{kn:"ಇಲ್ಲ",meaning:"नाही"},{kn:"ಎಲ್ಲ",meaning:"सर्व"},{kn:"ಅಲ್ಲಿ",meaning:"तिथे"}] },
+
+    { id:"JK004", prompt:"ಣ್ಣ", group:"ಣ", options:["ण्ण","ण्ट","न्न","ण्ड"], correctIdx:0,
+      words:[{kn:"ಕಣ್ಣು",meaning:"डोळा"},{kn:"ಹಣ್ಣು",meaning:"फळ"},{kn:"ಮಣ್ಣು",meaning:"माती"}] },
+
+    { id:"JK005", prompt:"ಪ್ಪ", group:"ಪ", options:["प्प","प्र","प्त","ब्ब"], correctIdx:0,
+      words:[{kn:"ಅಪ್ಪ",meaning:"वडील / बाबा"},{kn:"ತಪ್ಪು",meaning:"चूक"},{kn:"ಚಪ್ಪಲಿ",meaning:"चप्पल"}] },
+
+    { id:"JK006", prompt:"ಮ್ಮ", group:"ಮ", options:["म्म","म्ब","म्न","म्प"], correctIdx:0,
+      words:[{kn:"ಅಮ್ಮ",meaning:"आई"},{kn:"ಹಮ್ಮು",meaning:"गर्व"},{kn:"ಸಮ್ಮತ",meaning:"संमत"}] },
+
+    { id:"JK007", prompt:"ನ್ನ", group:"ನ", options:["न्न","न्त","न्द","ण्ण"], correctIdx:0,
+      words:[{kn:"ಅನ್ನ",meaning:"भात / अन्न"},{kn:"ಚನ್ನ",meaning:"सुंदर"},{kn:"ಇನ್ನು",meaning:"आता / पुढे"}] },
+
+    { id:"JK008", prompt:"ಟ್ಟ", group:"ಟ", options:["ट्ट","ट्ठ","ड्ड","ट्र"], correctIdx:0,
+      words:[{kn:"ಕಟ್ಟ",meaning:"बांध"},{kn:"ಮಟ್ಟ",meaning:"पातळी / स्तर"},{kn:"ಬಟ್ಟೆ",meaning:"कपडा"}] },
+
+    { id:"JK009", prompt:"ಡ್ಡ", group:"ಡ", options:["ड्ड","ड्ठ","ट्ट","ढ्ढ"], correctIdx:0,
+      words:[{kn:"ದೊಡ್ಡ",meaning:"मोठे"},{kn:"ಗಡ್ಡ",meaning:"दाढी"},{kn:"ಸದ್ದು",meaning:"आवाज"}] },
+
+    { id:"JK010", prompt:"ದ್ದ", group:"ದ", options:["द्द","द्ध","द्र","द्व"], correctIdx:0,
+      words:[{kn:"ಸದ್ದು",meaning:"आवाज"},{kn:"ಹೆದ್ದಾರಿ",meaning:"महामार्ग"},{kn:"ಮದ್ದು",meaning:"औषध"}] },
+
+    { id:"JK011", prompt:"ಬ್ಬ", group:"ಬ", options:["ब्ब","ब्द","ब्ध","भ्भ"], correctIdx:0,
+      words:[{kn:"ಹಬ್ಬ",meaning:"सण"},{kn:"ಡಬ್ಬ",meaning:"डबा"},{kn:"ಅಬ್ಬ",meaning:"अरे वा! (उद्गार)"}] },
+
+    { id:"JK012", prompt:"ಗ್ಗ", group:"ಗ", options:["ग्ग","ग्र","ग्ध","ग्न"], correctIdx:0,
+      words:[{kn:"ಸಿಗ್ಗು",meaning:"लाज"},{kn:"ಬಿಗ್ಗ",meaning:"घट्ट / कडक"},{kn:"ಬಗ್ಗು",meaning:"वाकणे"}] },
+
+    // ── Group 2: High-frequency mixed conjuncts ─────────────────
+    { id:"JK013", prompt:"ಸ್ತ", group:"ಸ", options:["स्त","स्थ","स्क","स्न"], correctIdx:0,
+      words:[{kn:"ನಮಸ್ತೆ",meaning:"नमस्ते"},{kn:"ವಸ್ತು",meaning:"वस्तू"},{kn:"ಹಸ್ತ",meaning:"हात"}] },
+
+    { id:"JK014", prompt:"ಕ್ಷ", group:"ಕ", options:["क्ष","क्क","क्त","क्र"], correctIdx:0,
+      words:[{kn:"ಅಕ್ಷರ",meaning:"अक्षर"},{kn:"ಪರೀಕ್ಷೆ",meaning:"परीक्षा"},{kn:"ಲಕ್ಷ",meaning:"लाख"}] },
+
+    { id:"JK015", prompt:"ಜ್ಞ", group:"ಜ", options:["ज्ञ","ज्ज","ज्र","ज्व"], correctIdx:0,
+      words:[{kn:"ಜ್ಞಾನ",meaning:"ज्ञान"},{kn:"ವಿಜ್ಞಾನ",meaning:"विज्ञान"},{kn:"ಅಜ್ಞ",meaning:"अज्ञानी"}] },
+
+    { id:"JK016", prompt:"ನ್ತ", group:"ನ", options:["न्त","न्न","न्द","न्ध"], correctIdx:0,
+      words:[{kn:"ಸಂತ",meaning:"संत"},{kn:"ಅಂತರ",meaning:"अंतर"},{kn:"ಶಾಂತ",meaning:"शांत"}] },
+
+    { id:"JK017", prompt:"ರ್ಥ", group:"ರ", options:["र्थ","र्क","र्त","र्ध"], correctIdx:0,
+      words:[{kn:"ಅರ್ಥ",meaning:"अर्थ / मतलब"},{kn:"ಸ್ವಾರ್ಥ",meaning:"स्वार्थ"},{kn:"ಸಮರ್ಥ",meaning:"समर्थ"}] },
+
+    { id:"JK018", prompt:"ಕ್ತ", group:"ಕ", options:["क्त","क्क","क्ष","क्र"], correctIdx:0,
+      words:[{kn:"ರಕ್ತ",meaning:"रक्त"},{kn:"ಭಕ್ತ",meaning:"भक्त"},{kn:"ಶಕ್ತಿ",meaning:"शक्ती"}] },
+
+    { id:"JK019", prompt:"ಸ್ನ", group:"ಸ", options:["स्न","स्त","स्थ","स्व"], correctIdx:0,
+      words:[{kn:"ಸ್ನಾನ",meaning:"स्नान / आंघोळ"},{kn:"ಸ್ನೇಹ",meaning:"स्नेह / मैत्री"},{kn:"ಸ್ನೇಹಿತ",meaning:"मित्र"}] },
+
+    { id:"JK020", prompt:"ಸ್ವ", group:"ಸ", options:["स्व","स्न","स्त","स्थ"], correctIdx:0,
+      words:[{kn:"ಸ್ವಲ್ಪ",meaning:"थोडे"},{kn:"ಸ್ವಚ್ಛ",meaning:"स्वच्छ"},{kn:"ಸ್ವತಂತ್ರ",meaning:"स्वतंत्र"}] },
+
+    { id:"JK021", prompt:"ರ್ಕ", group:"ರ", options:["र्क","र्थ","र्त","र्ध"], correctIdx:0,
+      words:[{kn:"ತರ್ಕ",meaning:"तर्क"},{kn:"ಮಾರ್ಕ",meaning:"मार्क"},{kn:"ಪಾರ್ಕ",meaning:"उद्यान / पार्क"}] },
+
+    // ── Group 3: Visually distinctive / complex ─────────────────
+    { id:"JK022", prompt:"ತ್ರ", group:"ತ", options:["त्र","त्त","त्व","त्न"], correctIdx:0,
+      words:[{kn:"ಮಿತ್ರ",meaning:"मित्र"},{kn:"ಪತ್ರ",meaning:"पत्र"},{kn:"ಚಿತ್ರ",meaning:"चित्र"}] },
+
+    { id:"JK023", prompt:"ಸ್ಥ", group:"ಸ", options:["स्थ","स्त","स्न","स्व"], correctIdx:0,
+      words:[{kn:"ಸ್ಥಳ",meaning:"जागा / स्थान"},{kn:"ಸ್ಥಿತಿ",meaning:"स्थिती"},{kn:"ಅವಸ್ಥೆ",meaning:"अवस्था"}] },
+
+    { id:"JK024", prompt:"ಪ್ರ", group:"ಪ", options:["प्र","प्प","प्त","प्न"], correctIdx:0,
+      words:[{kn:"ಪ್ರಶ್ನೆ",meaning:"प्रश्न"},{kn:"ಪ್ರೀತಿ",meaning:"प्रेम"},{kn:"ಪ್ರಯತ್ನ",meaning:"प्रयत्न"}] },
+
+    { id:"JK025", prompt:"ಗ್ರ", group:"ಗ", options:["ग्र","ग्ग","ग्ध","ग्न"], correctIdx:0,
+      words:[{kn:"ಗ್ರಾಮ",meaning:"गाव"},{kn:"ಗ್ರಂಥ",meaning:"ग्रंथ"},{kn:"ಗ್ರಹ",meaning:"ग्रह"}] },
+
+    { id:"JK026", prompt:"ಷ್ಟ", group:"ಷ", options:["ष्ट","ष्ठ","ष्ण","ष्प"], correctIdx:0,
+      words:[{kn:"ಕಷ್ಟ",meaning:"कठीण / त्रास"},{kn:"ಸ್ಪಷ್ಟ",meaning:"स्पष्ट"},{kn:"ದೃಷ್ಟಿ",meaning:"दृष्टी"}] },
+
+    { id:"JK027", prompt:"ಷ್ಠ", group:"ಷ", options:["ष्ठ","ष्ट","ष्ण","ष्प"], correctIdx:0,
+      words:[{kn:"ಶ್ರೇಷ್ಠ",meaning:"श्रेष्ठ"},{kn:"ಜ್ಯೇಷ್ಠ",meaning:"ज्येष्ठ"},{kn:"ನಿಷ್ಠೆ",meaning:"निष्ठा"}] },
+
+    { id:"JK028", prompt:"ಷ್ಣ", group:"ಷ", options:["ष्ण","ष्ट","ष्ठ","ष्प"], correctIdx:0,
+      words:[{kn:"ಕೃಷ್ಣ",meaning:"कृष्ण"},{kn:"ವಿಷ್ಣು",meaning:"विष्णू"},{kn:"ತೃಷ್ಣೆ",meaning:"तहान / तृष्णा"}] },
+
+    { id:"JK029", prompt:"ಶ್ರ", group:"ಶ", options:["श्र","श्व","श्न","श्म"], correctIdx:0,
+      words:[{kn:"ಶ್ರಮ",meaning:"श्रम / कष्ट"},{kn:"ಶ್ರೀ",meaning:"श्री"},{kn:"ಶ್ರದ್ಧೆ",meaning:"श्रद्धा"}] },
+
+    { id:"JK030", prompt:"ಧ್ಯ", group:"ಧ", options:["ध्य","ध्व","ध्न","ध्र"], correctIdx:0,
+      words:[{kn:"ಅಧ್ಯಯನ",meaning:"अभ्यास"},{kn:"ಮಧ್ಯ",meaning:"मध्य"},{kn:"ಧ್ಯಾನ",meaning:"ध्यान"}] },
+
+    { id:"JK031", prompt:"ದ್ವ", group:"ದ", options:["द्व","द्द","द्ध","द्र"], correctIdx:0,
+      words:[{kn:"ದ್ವೀಪ",meaning:"बेट"},{kn:"ದ್ವಂದ್ವ",meaning:"द्वंद्व"},{kn:"ದ್ವಾರ",meaning:"दरवाजा"}] },
+
+    { id:"JK032", prompt:"ದ್ರ", group:"ದ", options:["द्र","द्व","द्द","द्ध"], correctIdx:0,
+      words:[{kn:"ದ್ರಾಕ್ಷಿ",meaning:"द्राक्ष"},{kn:"ದ್ರವ",meaning:"द्रव"},{kn:"ಇಂದ್ರ",meaning:"इंद्र"}] },
+
+    { id:"JK033", prompt:"ಕ್ಲ", group:"ಕ", options:["क्ल","क्क","क्त","क्ष"], correctIdx:0,
+      words:[{kn:"ಕ್ಲಾಸ್",meaning:"वर्ग"},{kn:"ಕ್ಲೇಶ",meaning:"क्लेश"},{kn:"ಕ್ಲುಪ್ತ",meaning:"थोडक्यात"}] },
+
+    { id:"JK034", prompt:"ಸ್ಕ", group:"ಸ", options:["स्क","स्त","स्न","स्व"], correctIdx:0,
+      words:[{kn:"ಸ್ಕೂಲ್",meaning:"शाळा"},{kn:"ಡಿಸ್ಕ",meaning:"डिस्क"},{kn:"ಮಸ್ಕ",meaning:"मस्का / लोणी"}] },
+
+    { id:"JK035", prompt:"ಸ್ಸ", group:"ಸ", options:["स्स","स्त","स्क","स्न"], correctIdx:0,
+      words:[{kn:"ಬಸ್ಸು",meaning:"बस"},{kn:"ಕ್ಲಾಸ್ಸು",meaning:"वर्ग"},{kn:"ಮಿಸ್ಸು",meaning:"चुकणे"}] },
+  ];
+
+  // ── Storage ───────────────────────────────────────────────────
+  const Settings = {
+    load(){
+      try{
+        const s = JSON.parse(localStorage.getItem('kjt_settings')||'{}');
+        if(s.cardsCount) qs('#cards-count').value = s.cardsCount;
+        if(s.timerSec)   qs('#timer-seconds').value = String(s.timerSec);
+      }catch{}
+    },
+    save(){
+      const s = {
+        cardsCount: Number(qs('#cards-count').value||20),
+        timerSec:   Number(qs('#timer-seconds').value||6),
+      };
+      localStorage.setItem('kjt_settings', JSON.stringify(s));
+      return s;
+    }
+  };
+
+  const HistoryStore = {
+    key: 'kjt_history',
+    read(){ try{ return JSON.parse(localStorage.getItem(this.key)||'[]'); }catch{ return []; } },
+    write(arr){ localStorage.setItem(this.key, JSON.stringify(arr.slice(0,10))); },
+    clear(){ localStorage.removeItem(this.key); }
+  };
+
+  const ProgressStore = {
+    key: 'kjt_progress_v1',
+    read(){ try{ return JSON.parse(localStorage.getItem(this.key)||'{}'); }catch{ return {}; } },
+    write(obj){ localStorage.setItem(this.key, JSON.stringify(obj)); },
+    get(){
+      const p = this.read();
+      if(!p || typeof p !== 'object') return { version:1, itemStats:{} };
+      if(!p.version) p.version = 1;
+      if(!p.itemStats) p.itemStats = {};
+      return p;
+    }
+  };
+
+  function getItemStat(progress, id){
+    if(!progress.itemStats[id]) progress.itemStats[id] = { attempts:0, correct:0, wrongByOption:{} };
+    const s = progress.itemStats[id];
+    if(!s.wrongByOption) s.wrongByOption = {};
+    return s;
+  }
+
+  function recordAttempt(row, wasCorrect, chosenOpt){
+    const progress = ProgressStore.get();
+    const st = getItemStat(progress, String(row.id));
+    st.attempts += 1;
+    if(wasCorrect) st.correct += 1;
+    else { const k = String(chosenOpt??'—'); st.wrongByOption[k] = (st.wrongByOption[k]||0)+1; }
+    ProgressStore.write(progress);
+  }
+
+  const WEAK = { minAttempts:8, threshold:0.99 };
+
+  function isWeak(row, progress){
+    const st = progress.itemStats?.[String(row.id)];
+    if(!st) return false;
+    const attempts = Number(st.attempts||0);
+    if(attempts < WEAK.minAttempts) return false;
+    return (Number(st.correct||0)/attempts) < WEAK.threshold;
+  }
+
+  // ── Card building ─────────────────────────────────────────────
+  // Distractors: prefer same-group (same first consonant) options;
+  // fall back to any pool options if not enough.
+  function buildCard(row, pool){
+    const correct = row.options[row.correctIdx];
+    const sameGroup = pool.filter(r => r.id !== row.id && r.group === row.group);
+    const otherPool = pool.filter(r => r.id !== row.id && r.group !== row.group);
+
+    // Collect wrong answer candidates
+    function wrongAnswers(rows){ return rows.map(r => r.options[r.correctIdx]).filter(a => a !== correct); }
+
+    let distractors = shuffle([...new Set(wrongAnswers(sameGroup))]).slice(0,3);
+    if(distractors.length < 3){
+      const extra = shuffle([...new Set(wrongAnswers(otherPool))]).filter(a => !distractors.includes(a));
+      distractors = [...distractors, ...extra].slice(0,3);
+    }
+    // Fallback: use the row's own wrong options
+    if(distractors.length < 3){
+      const own = row.options.filter((_, i) => i !== row.correctIdx).filter(a => !distractors.includes(a));
+      distractors = [...distractors, ...own].slice(0,3);
+    }
+
+    const options = shuffle([correct, ...distractors.slice(0,3)]);
+    return { row, prompt: row.prompt, options, correctIdx: options.indexOf(correct) };
+  }
+
+  // ── Session engine ────────────────────────────────────────────
+  const timerRing   = qs('#timer-ring');
+  const elPrompt    = qs('#prompt');
+  const elCardIndex = qs('#card-index');
+  const elCardTotal = qs('#card-total');
+  const elScore     = qs('#score');
+  const optionsBox  = qs('#options-box');
+  const revealPanel = qs('#reveal-panel');
+  const revealWord  = qs('#reveal-word');
+  const revealMeaning = qs('#reveal-meaning');
+
+  let session = null, tHandle = null, lastStartTs = 0, isLocked = false, sessionAlive = false;
+
+  function startSession({ fromMistakesOnly=false, weakOnly=false } = {}){
+    sessionAlive = true;
+    const s = Settings.save();
+    const progress = ProgressStore.get();
+    let pool = [...EMBEDDED_DECK];
+
+    if(fromMistakesOnly && session?.mistakes?.length){
+      pool = session.mistakes.map(m => m.row);
+    }
+    if(weakOnly){
+      pool = pool.filter(r => isWeak(r, progress));
+      if(!pool.length){
+        alert(`No weak conjuncts yet. Need ≥${WEAK.minAttempts} attempts and accuracy <99%. Keep practicing first!`);
+        return;
+      }
+    }
+    if(!pool.length){ alert('No cards found.'); return; }
+
+    const count = Math.min(Math.max(1, Number(s.cardsCount)||20), pool.length);
+    const queue = shuffle([...pool]).slice(0, count);
+
+    session = {
+      idx:0, total:queue.length, score:0,
+      mistakes:[], times:[],
+      timerSec: Number(s.timerSec)||6,
+      current:null, pool, queue,
+      label: fromMistakesOnly ? 'Retry mistakes' : weakOnly ? 'Weak conjuncts' : 'Mixed deck'
+    };
+    elCardTotal.textContent = String(session.total);
+    elScore.textContent = '0';
+    show('play');
+    renderNext();
+  }
+
+  function renderNext(){
+    if(session.idx >= session.total){ endSession(); return; }
+    const pct = Math.round((session.idx / session.total)*100);
+    qs('#progress-bar').style.width = pct + '%';
+
+    // Close reveal panel
+    revealPanel.classList.remove('open');
+
+    const row = session.queue[session.idx];
+    const card = buildCard(row, session.pool);
+    session.current = card;
+    renderCard(card);
+    runTimer();
+  }
+
+  function renderCard(card){
+    elPrompt.textContent = card.prompt;
+    optionsBox.innerHTML = '';
+    card.options.forEach((opt, i) => {
+      const btn = document.createElement('button');
+      btn.className = 'w-full text-left px-4 py-3 rounded-xl border border-slate-200 hover:bg-slate-50 flex items-center gap-3 focus:outline-none focus:ring-2 focus:ring-slate-300 transition-colors duration-150';
+      btn.dataset.index = i;
+      btn.innerHTML = `<span class="optnum text-slate-400 w-6">${i+1}</span><span class="text-lg">${escapeHtml(opt)}</span>`;
+      btn.addEventListener('click', () => choose(i));
+      optionsBox.appendChild(btn);
+    });
+    elCardIndex.textContent = String(session.idx+1);
+    setTimerLabel(session.timerSec);
+    lastStartTs = performance.now();
+  }
+
+  function showReveal(row){
+    const word = pick(row.words);
+    revealWord.textContent = word.kn;
+    revealMeaning.textContent = word.meaning;
+    revealPanel.classList.add('open');
+  }
+
+  function choose(i){
+    if(isLocked) return; isLocked = true;
+    stopTimer();
+    const card = session.current;
+    const row  = card.row;
+    const elapsed = Math.max(0, (performance.now()-lastStartTs)/1000);
+    session.times.push(elapsed);
+    const correct = (i === card.correctIdx);
+    recordAttempt(row, correct, card.options[i]);
+
+    const buttons = qsa('button', optionsBox);
+    buttons.forEach(b => b.classList.add('pointer-events-none'));
+
+    if(correct){
+      buttons.forEach((b, idx) => {
+        const num = b.querySelector('.optnum');
+        if(idx === card.correctIdx){
+          b.classList.remove('border-slate-200');
+          b.classList.add('bg-green-500','text-white','border-green-600');
+          if(num) num.classList.add('text-white');
+        } else {
+          b.style.opacity = '0';
+          setTimeout(() => b.classList.add('hidden'), 200);
+        }
+      });
+      session.score += 1; elScore.textContent = String(session.score);
+    } else {
+      buttons.forEach((b, idx) => {
+        const num = b.querySelector('.optnum');
+        if(idx === card.correctIdx){
+          b.classList.remove('border-slate-200');
+          b.classList.add('bg-green-500','text-white','border-green-600');
+          if(num) num.classList.add('text-white');
+        } else if(idx === i){
+          b.classList.remove('border-slate-200');
+          b.classList.add('bg-rose-500','text-white','border-rose-600');
+          if(num) num.classList.add('text-white');
+        } else {
+          b.classList.add('opacity-60');
+        }
+      });
+      session.mistakes.push({ row, chosen: card.options[i], correct: card.options[card.correctIdx] });
+    }
+
+    // Show word reveal for both right and wrong
+    showReveal(row);
+
+    setTimeout(() => { isLocked = false; session.idx++; renderNext(); }, 2000);
+  }
+
+  // ── Timer ─────────────────────────────────────────────────────
+  function setTimerLabel(s){ timerRing.setAttribute('data-time', s+'s'); }
+
+  function runTimer(){
+    stopTimer(); setTimerLabel(session.timerSec);
+    tHandle = setInterval(() => {
+      const left = Number((timerRing.getAttribute('data-time')||'0').replace('s',''))||0;
+      const next = Math.max(0, left-1);
+      setTimerLabel(next);
+      if(next <= 0){ stopTimer(); chooseTimeout(); }
+    }, 1000);
+  }
+
+  function stopTimer(){ if(tHandle){ clearInterval(tHandle); tHandle=null; } }
+
+  function chooseTimeout(){
+    if(isLocked) return; isLocked = true;
+    const card = session.current;
+    session.times.push(session.timerSec);
+    recordAttempt(card.row, false, '⏳');
+    session.mistakes.push({ row:card.row, chosen:'⏳', correct:card.options[card.correctIdx] });
+
+    const buttons = qsa('button', optionsBox);
+    buttons.forEach(b => b.classList.add('pointer-events-none'));
+    buttons.forEach((b, idx) => {
+      const num = b.querySelector('.optnum');
+      if(idx === card.correctIdx){
+        b.classList.remove('border-slate-200');
+        b.classList.add('bg-green-500','text-white','border-green-600');
+        if(num) num.classList.add('text-white');
+      } else { b.classList.add('opacity-60'); }
+    });
+
+    showReveal(card.row);
+    setTimeout(() => { isLocked=false; session.idx++; renderNext(); }, 2000);
+  }
+
+  // ── Results ───────────────────────────────────────────────────
+  function endSession(){
+    sessionAlive = false; stopTimer();
+    const total = session.total, correct = session.score;
+    const acc = total ? Math.round((correct/total)*100) : 0;
+    const avg = session.times.length ? (session.times.reduce((a,b)=>a+b,0)/session.times.length) : 0;
+    const fastest = session.times.length ? Math.min(...session.times) : 0;
+    const slowest = session.times.length ? Math.max(...session.times) : 0;
+
+    qs('#stat-acc').innerHTML = `${acc}% <span class="text-slate-400 text-base">(${correct}/${total})</span>`;
+    qs('#stat-avg').textContent = avg ? `${avg.toFixed(1)} s` : '—';
+    qs('#stat-range').textContent = (fastest && slowest) ? `${fastest.toFixed(1)} s / ${slowest.toFixed(1)} s` : '—';
+
+    const wrongUL = qs('#wrong-list'); wrongUL.innerHTML = '';
+    session.mistakes.slice(0,50).forEach(m => {
+      const li = document.createElement('li');
+      li.className = 'flex items-center gap-2';
+      li.innerHTML = `<span class="kn text-xl">${escapeHtml(m.row.prompt)}</span><span>→</span><span class="text-base">${escapeHtml(m.correct)}</span><span class="text-slate-500">(you chose</span><span class="text-base">${escapeHtml(String(m.chosen))}</span><span class="text-slate-500">)</span>`;
+      wrongUL.appendChild(li);
+    });
+
+    const history = HistoryStore.read();
+    history.unshift({
+      ts: new Date().toISOString(),
+      total, correct, acc,
+      avg: Number(avg.toFixed(2)),
+      mode: session.label,
+      wrong: session.mistakes.slice(0,10).map(m => ({ prompt:m.row.prompt, correct:m.correct }))
+    });
+    HistoryStore.write(history);
+    renderQuickStats();
+    show('results');
+  }
+
+  // ── Quick stats & history UI ──────────────────────────────────
+  function renderQuickStats(){
+    const history = HistoryStore.read();
+    const progress = ProgressStore.get();
+    const n = history.length;
+    const avgAcc = n ? Math.round(history.reduce((s,h) => s+h.acc,0)/n) : 0;
+    let streak = 0;
+    for(const h of history){ if(h.acc===100) streak++; else break; }
+    const last = n ? `Last session: ${history[0].correct}/${history[0].total}` : '';
+    qs('#quick-stats').innerHTML = `
+      <div class="bg-slate-100 rounded-xl p-4">
+        <div class="text-2xl font-bold">${n}</div>
+        <div class="text-sm text-slate-600">Sessions</div>
+      </div>
+      <div class="bg-slate-100 rounded-xl p-4">
+        <div class="text-2xl font-bold">${avgAcc}%</div>
+        <div class="text-sm text-slate-600">Avg Accuracy</div>
+      </div>
+      <div class="bg-slate-100 rounded-xl p-4">
+        <div class="text-2xl font-bold">${streak}</div>
+        <div class="text-sm text-slate-600">Streak</div>
+      </div>`;
+    qs('#last-session-info').textContent = last;
+  }
+
+  function renderHistory(){
+    const list = qs('#history-list');
+    const data = HistoryStore.read();
+    list.innerHTML = '';
+    if(!data.length){
+      const li = document.createElement('li');
+      li.className = 'py-2 text-slate-500'; li.textContent = 'No runs yet.';
+      list.appendChild(li); return;
+    }
+    data.slice(0,10).forEach(item => {
+      const li = document.createElement('li');
+      li.className = 'py-2 flex flex-col gap-1';
+      const dt = new Date(item.ts);
+      const title = `${dt.toLocaleDateString()} ${dt.toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'})}`;
+      li.innerHTML = `
+        <div class="flex items-center justify-between">
+          <div class="font-medium text-slate-700 text-sm">${escapeHtml(title)}</div>
+          <div class="text-xs text-slate-500">Conjuncts</div>
+        </div>
+        <div class="text-xs text-slate-600">${item.correct}/${item.total} correct · ${item.acc}% · avg ${item.avg}s${item.mode ? ` · ${escapeHtml(item.mode)}` : ''}</div>
+        ${item.wrong?.length ? `<div class="text-xs text-slate-500">Wrong: ${item.wrong.map(w=>`${escapeHtml(w.prompt)}→${escapeHtml(w.correct)}`).join(', ')}</div>` : ''}`;
+      list.appendChild(li);
+    });
+  }
+
+  // ── Keyboard shortcuts ────────────────────────────────────────
+  document.addEventListener('keydown', e => {
+    if(!screens.play?.classList.contains('active')) return;
+    if(['1','2','3','4'].includes(e.key)){
+      const card = session?.current;
+      const idx = Number(e.key)-1;
+      if(card && card.options[idx] !== undefined) choose(idx);
+    } else if(e.key === ' '){ e.preventDefault(); stopTimer(); chooseTimeout(); }
+  });
+
+  // ── Wire up buttons ───────────────────────────────────────────
+  qs('#btn-start').addEventListener('click', () => startSession());
+  qs('#btn-weak').addEventListener('click',  () => startSession({ weakOnly:true }));
+  qs('#btn-newrun').addEventListener('click', () => show('home'));
+  qs('#btn-retry-mistakes').addEventListener('click', () => startSession({ fromMistakesOnly:true }));
+
+  qs('#btn-toggle-history').addEventListener('click', () => {
+    const panel = qs('#history-panel');
+    const btn   = qs('#btn-toggle-history');
+    if(panel.classList.contains('hidden')){
+      renderHistory(); panel.classList.remove('hidden'); btn.textContent = 'Hide History';
+    } else {
+      panel.classList.add('hidden'); btn.textContent = 'Show History';
+    }
+  });
+  qs('#btn-clear-history').addEventListener('click', () => { HistoryStore.clear(); renderHistory(); });
+
+  // ── Init ──────────────────────────────────────────────────────
+  Settings.load();
+  renderQuickStats();
+
+})();
+</script>
+
+<script>
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+      navigator.serviceWorker.register('./sw.js').catch(() => {});
+    });
+  }
+</script>
+</body>
+</html>

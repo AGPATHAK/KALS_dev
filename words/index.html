@@ -1,0 +1,825 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Kannada Words Trainer</title>
+
+  <link rel="manifest" href="manifest.json" />
+  <meta name="theme-color" content="#0f172a" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="KN Words" />
+  <link rel="apple-touch-icon" href="apple-touch-icon.png" />
+  <link rel="icon" type="image/png" href="favicon.png" />
+
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=Noto+Sans+Kannada:wght@500;700&display=swap" rel="stylesheet" />
+
+  <style>
+    body { font-family: Inter, system-ui, sans-serif; }
+    .kn  { font-family: 'Noto Sans Kannada', Inter, system-ui, sans-serif; }
+    .dev { font-family: Inter, system-ui, sans-serif; }
+    .shadow-soft { box-shadow: 0 6px 24px rgba(2,6,23,0.06), 0 2px 8px rgba(2,6,23,0.04); }
+    .screen { display: none; }
+    .screen.active { display: block; }
+  </style>
+</head>
+
+<body class="bg-slate-50 text-slate-900">
+<div class="max-w-3xl mx-auto p-4 sm:p-6">
+
+  <!-- Header -->
+  <header class="flex items-center gap-3 mb-6">
+    <div class="text-xl">🕉️</div>
+    <h1 class="text-2xl font-bold">Kannada Words Trainer</h1>
+    <div class="ml-auto text-sm text-slate-500">ಪದ</div>
+  </header>
+
+  <!-- ═══════════════════════════════════════
+       HOME
+  ════════════════════════════════════════ -->
+  <section id="screen-home" class="screen active">
+    <div class="bg-white rounded-2xl shadow-soft p-6 sm:p-8 space-y-5">
+
+      <h2 class="text-base text-slate-500 text-center">ಕನ್ನಡ ಪದ → देवनागरी</h2>
+
+      <!-- Quick stats -->
+      <div id="quick-stats" class="grid grid-cols-3 gap-3"></div>
+
+      <!-- Settings grid -->
+      <div class="grid sm:grid-cols-2 gap-4 text-left">
+        <div>
+          <label class="block text-sm font-medium mb-2">Glimpse time</label>
+          <select id="glimpse-seconds"
+            class="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-slate-300">
+            <option value="1">1 second</option>
+            <option value="3">3 seconds</option>
+            <option value="5" selected>5 seconds</option>
+          </select>
+        </div>
+        <div>
+          <label class="block text-sm font-medium mb-2">Session size</label>
+          <select id="session-size"
+            class="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-slate-300">
+            <option value="10" selected>10</option>
+            <option value="20">20</option>
+            <option value="50">50</option>
+            <option value="100">100</option>
+          </select>
+        </div>
+        <div class="sm:col-span-2">
+          <label class="block text-sm font-medium mb-2">Practice mode</label>
+          <select id="practice-mode"
+            class="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-slate-300">
+            <option value="mixed" selected>Mixed — weighted by weakness</option>
+            <option value="mistakes">Weak words only</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="flex items-center gap-3 text-sm">
+        <input id="speak-on-reveal" type="checkbox" class="rounded" />
+        <label for="speak-on-reveal" class="text-slate-700">Speak on reveal</label>
+        <input id="auto-advance" type="checkbox" class="rounded ml-4" />
+        <label for="auto-advance" class="text-slate-700">Auto-advance after scoring</label>
+      </div>
+
+      <button id="btn-start"
+        class="w-full py-4 bg-black text-white rounded-xl text-lg font-semibold hover:bg-slate-800 transition-colors">
+        Start Session
+      </button>
+
+      <button id="btn-show-stats"
+        class="w-full py-3 border border-slate-200 rounded-xl text-base font-medium hover:bg-slate-50 transition-colors">
+        View Progress
+      </button>
+
+      <button id="btn-reset"
+        class="block mx-auto text-sm text-blue-600 underline hover:text-blue-800">
+        Reset progress
+      </button>
+
+    </div>
+  </section>
+
+  <!-- ═══════════════════════════════════════
+       TRAIN
+  ════════════════════════════════════════ -->
+  <section id="screen-train" class="screen">
+    <div class="bg-white rounded-2xl shadow-soft p-6 sm:p-8">
+
+      <!-- Top bar: card counter + phase pill + timer -->
+      <div class="flex items-center justify-between mb-4">
+        <div class="text-sm text-slate-500">
+          Card <span id="card-index">1</span>/<span id="card-total">10</span>
+        </div>
+        <div id="phase-pill"
+          class="text-xs font-semibold px-3 py-1 rounded-full bg-slate-100 text-slate-600">
+          Glimpse
+        </div>
+        <div id="timer-display" class="text-sm font-semibold text-slate-500 tabular-nums w-8 text-right"></div>
+      </div>
+
+      <!-- Progress bar -->
+      <div class="w-full bg-slate-100 rounded-full h-1.5 mb-6">
+        <div id="progress-bar"
+          class="bg-slate-800 h-1.5 rounded-full transition-all duration-300" style="width:0%"></div>
+      </div>
+
+      <!-- Glimpse panel -->
+      <div id="glimpse-panel">
+        <div class="text-center py-6">
+          <div id="word-glimpse" class="kn text-8xl font-bold leading-none"></div>
+        </div>
+        <!-- Glimpse countdown bar -->
+        <div class="w-full bg-slate-100 rounded-full h-1 mt-4 mb-1 overflow-hidden">
+          <div id="glimpse-bar"
+            class="h-1 rounded-full bg-slate-400 transition-none" style="width:100%"></div>
+        </div>
+        <p class="text-center text-sm text-slate-400 mt-2">
+          Snapshot the word shape. Don't spell it out.
+        </p>
+      </div>
+
+      <!-- Reveal panel (hidden during glimpse) -->
+      <div id="reveal-panel" class="hidden">
+        <div class="text-center mb-5">
+          <div id="word-reveal" class="kn text-7xl font-bold leading-none"></div>
+        </div>
+
+        <div class="h-px bg-slate-100 mb-4"></div>
+
+        <!-- Devanagari + meaning -->
+        <div class="grid grid-cols-[6rem_1fr] gap-y-3 gap-x-3 items-baseline mb-5">
+          <div class="text-sm text-slate-400">देवनागरी</div>
+          <div id="dev-line" class="dev text-2xl font-bold text-slate-800"></div>
+          <div class="text-sm text-slate-400">Meaning</div>
+          <div id="meaning-line" class="text-lg font-semibold text-slate-700"></div>
+        </div>
+
+        <div id="speech-note" class="hidden text-xs text-slate-400 mb-3 text-center">
+          Speech not available on this browser.
+        </div>
+
+        <!-- Self-score -->
+        <div class="grid grid-cols-2 gap-3 mt-2">
+          <button id="btn-wrong"
+            class="py-3 rounded-xl border-2 border-rose-300 text-rose-700 font-semibold hover:bg-rose-50 transition-colors">
+            Made a mistake
+          </button>
+          <button id="btn-right"
+            class="py-3 rounded-xl border-2 border-emerald-400 text-emerald-700 font-semibold hover:bg-emerald-50 transition-colors">
+            Got it right
+          </button>
+        </div>
+        <p class="text-center text-xs text-slate-400 mt-3">
+          Judge letter + mātrā recognition, not meaning recall.
+        </p>
+      </div>
+
+      <!-- Nav -->
+      <div class="grid grid-cols-2 gap-3 mt-5">
+        <button id="btn-back"
+          class="py-3 border border-slate-200 rounded-xl font-medium hover:bg-slate-50 transition-colors">
+          Back
+        </button>
+        <button id="btn-nav"
+          class="py-3 bg-black text-white rounded-xl font-semibold hover:bg-slate-800 transition-colors">
+          Reveal
+        </button>
+      </div>
+
+      <button id="btn-home-from-train"
+        class="block mx-auto mt-4 text-sm text-blue-600 underline hover:text-blue-800">
+        Return to Home
+      </button>
+    </div>
+  </section>
+
+  <!-- ═══════════════════════════════════════
+       END
+  ════════════════════════════════════════ -->
+  <section id="screen-end" class="screen">
+    <div class="bg-white rounded-2xl shadow-soft p-6 sm:p-8">
+
+      <h2 class="text-2xl font-bold mb-2">Session Complete</h2>
+      <p id="end-summary" class="text-slate-500 text-sm mb-6"></p>
+
+      <div id="end-stats" class="grid grid-cols-3 gap-3 mb-6"></div>
+
+      <button id="btn-again"
+        class="w-full py-4 bg-black text-white rounded-xl text-lg font-semibold hover:bg-slate-800 transition-colors mb-3">
+        Another Session
+      </button>
+      <button id="btn-home-from-end"
+        class="w-full py-3 border border-slate-200 rounded-xl font-medium hover:bg-slate-50 transition-colors">
+        Home
+      </button>
+    </div>
+  </section>
+
+  <!-- ═══════════════════════════════════════
+       STATS
+  ════════════════════════════════════════ -->
+  <section id="screen-stats" class="screen">
+    <div class="bg-white rounded-2xl shadow-soft p-6 sm:p-8 space-y-5">
+
+      <h2 class="text-xl font-bold">Your Progress</h2>
+
+      <div id="stats-overall" class="grid grid-cols-3 gap-3"></div>
+
+      <div id="stats-history"></div>
+
+      <div>
+        <h3 class="text-base font-bold mb-1">Word Strength <span class="text-slate-400 font-normal text-sm">(weakest first)</span></h3>
+        <p class="text-xs text-slate-400 mb-3">Box 0 = not yet mastered · higher box = stronger</p>
+        <div id="word-strength-list" class="space-y-2 max-h-80 overflow-y-auto"></div>
+      </div>
+
+      <button id="btn-home-from-stats"
+        class="w-full py-3 bg-black text-white rounded-xl font-semibold hover:bg-slate-800 transition-colors">
+        Back to Home
+      </button>
+      <button id="btn-reset-stats"
+        class="block mx-auto text-sm text-blue-600 underline hover:text-blue-800">
+        Reset progress
+      </button>
+
+    </div>
+  </section>
+
+</div><!-- /container -->
+
+<script>
+(() => {
+'use strict';
+
+/* ══════════════════════════════════════════
+   WORD DECK  (100 words, CSV-validated)
+══════════════════════════════════════════ */
+const WORDS = [
+  {id:"W001",kn:"ಮನೆ",dev:"मने",meaning:"house",tag:"common",level:1},
+  {id:"W002",kn:"ನೀರು",dev:"नीरु",meaning:"water",tag:"common",level:1},
+  {id:"W003",kn:"ಅನ್ನ",dev:"अन्न",meaning:"rice or meal",tag:"food",level:1},
+  {id:"W004",kn:"ಊಟ",dev:"ऊट",meaning:"meal",tag:"food",level:1},
+  {id:"W005",kn:"ಹಾಲು",dev:"हालु",meaning:"milk",tag:"food",level:1},
+  {id:"W006",kn:"ಚಹಾ",dev:"चहा",meaning:"tea",tag:"food",level:1},
+  {id:"W007",kn:"ಕಾಫಿ",dev:"काफ़ी",meaning:"coffee",tag:"food",level:1},
+  {id:"W008",kn:"ಹಣ್ಣು",dev:"हण्णु",meaning:"fruit",tag:"food",level:1},
+  {id:"W009",kn:"ಮಳೆ",dev:"मळे",meaning:"rain",tag:"nature",level:1},
+  {id:"W010",kn:"ಸೂರ್ಯ",dev:"सूर्य",meaning:"sun",tag:"nature",level:1},
+  {id:"W011",kn:"ಚಂದ್ರ",dev:"चन्द्र",meaning:"moon",tag:"nature",level:1},
+  {id:"W012",kn:"ಶಾಲೆ",dev:"शाले",meaning:"school",tag:"place",level:1},
+  {id:"W013",kn:"ರಸ್ತೆ",dev:"रस्ते",meaning:"road",tag:"place",level:1},
+  {id:"W014",kn:"ಬಾಗಿಲು",dev:"बागिलु",meaning:"door",tag:"object",level:1},
+  {id:"W015",kn:"ಕಿಟಕಿ",dev:"किटकि",meaning:"window",tag:"object",level:1},
+  {id:"W016",kn:"ಕುರ್ಚಿ",dev:"कुर्चि",meaning:"chair",tag:"object",level:1},
+  {id:"W017",kn:"ಮೇಜು",dev:"मेजु",meaning:"table",tag:"object",level:1},
+  {id:"W018",kn:"ಕನ್ನಡ",dev:"कन्नड",meaning:"Kannada language",tag:"language",level:1},
+  {id:"W019",kn:"ನಮಸ್ಕಾರ",dev:"नमस्कार",meaning:"hello",tag:"greeting",level:1},
+  {id:"W020",kn:"ಧನ್ಯವಾದ",dev:"धन्यवाद",meaning:"thank you",tag:"greeting",level:1},
+  {id:"W021",kn:"ಬರು",dev:"बरु",meaning:"come",tag:"verb",level:1},
+  {id:"W022",kn:"ಹೋಗು",dev:"होगु",meaning:"go",tag:"verb",level:1},
+  {id:"W023",kn:"ನೋಡು",dev:"नोडु",meaning:"see or look",tag:"verb",level:1},
+  {id:"W024",kn:"ಕೇಳು",dev:"केळु",meaning:"hear or listen",tag:"verb",level:1},
+  {id:"W025",kn:"ಸಮಯ",dev:"समय",meaning:"time",tag:"abstract",level:1},
+  {id:"W026",kn:"ಬೆಳಗ್ಗೆ",dev:"बेळग्गे",meaning:"morning",tag:"time",level:1},
+  {id:"W027",kn:"ಸಂಜೆ",dev:"संजे",meaning:"evening",tag:"time",level:1},
+  {id:"W028",kn:"ರಾತ್ರಿ",dev:"रात्रि",meaning:"night",tag:"time",level:1},
+  {id:"W029",kn:"ಇಂದು",dev:"इंदु",meaning:"today",tag:"time",level:1},
+  {id:"W030",kn:"ನಿನ್ನೆ",dev:"निन्ने",meaning:"yesterday",tag:"time",level:1},
+  {id:"W031",kn:"ನಾಳೆ",dev:"नाळे",meaning:"tomorrow",tag:"time",level:1},
+  {id:"W032",kn:"ಅಪ್ಪ",dev:"अप्प",meaning:"father",tag:"family",level:1},
+  {id:"W033",kn:"ಅಮ್ಮ",dev:"अम्म",meaning:"mother",tag:"family",level:1},
+  {id:"W034",kn:"ಅಣ್ಣ",dev:"अण्ण",meaning:"elder brother",tag:"family",level:1},
+  {id:"W035",kn:"ಅಕ್ಕ",dev:"अक्क",meaning:"elder sister",tag:"family",level:1},
+  {id:"W036",kn:"ಮಗು",dev:"मगु",meaning:"child",tag:"family",level:1},
+  {id:"W037",kn:"ಮಿತ್ರ",dev:"मित्र",meaning:"friend",tag:"people",level:1},
+  {id:"W038",kn:"ಜನ",dev:"जन",meaning:"people",tag:"people",level:1},
+  {id:"W039",kn:"ನಗರ",dev:"नगर",meaning:"city",tag:"place",level:1},
+  {id:"W040",kn:"ಗ್ರಾಮ",dev:"ग्राम",meaning:"village",tag:"place",level:1},
+  {id:"W041",kn:"ಮನೆಗೆ",dev:"मनेगे",meaning:"to the house",tag:"grammar",level:2},
+  {id:"W042",kn:"ಮಾರುಕಟ್ಟೆ",dev:"मारुकट्टे",meaning:"market",tag:"place",level:2},
+  {id:"W043",kn:"ಕಡಲೆ",dev:"कडले",meaning:"peanut",tag:"food",level:2},
+  {id:"W044",kn:"ಅಕ್ಕಿ",dev:"अक्कि",meaning:"rice grain",tag:"food",level:1},
+  {id:"W045",kn:"ಸಕ್ಕರೆ",dev:"सक्करे",meaning:"sugar",tag:"food",level:1},
+  {id:"W046",kn:"ಉಪ್ಪು",dev:"उप्पु",meaning:"salt",tag:"food",level:1},
+  {id:"W047",kn:"ತಿಂಡಿ",dev:"तिंडि",meaning:"snack",tag:"food",level:1},
+  {id:"W048",kn:"ಬಿಸಿ",dev:"बिसि",meaning:"hot (temperature)",tag:"adjective",level:1},
+  {id:"W049",kn:"ತಣ್ಣೆ",dev:"तण्णे",meaning:"cold",tag:"adjective",level:1},
+  {id:"W050",kn:"ದೊಡ್ಡ",dev:"दोद्द",meaning:"big",tag:"adjective",level:1},
+  {id:"W051",kn:"ಚಿಕ್ಕ",dev:"चिक्क",meaning:"small",tag:"adjective",level:1},
+  {id:"W052",kn:"ಹೊಸ",dev:"होस",meaning:"new",tag:"adjective",level:1},
+  {id:"W053",kn:"ಹಳೆ",dev:"हळे",meaning:"old",tag:"adjective",level:1},
+  {id:"W054",kn:"ಸುಂದರ",dev:"सुंदर",meaning:"beautiful",tag:"adjective",level:1},
+  {id:"W055",kn:"ಒಳ್ಳೆ",dev:"ओळ्ळे",meaning:"good",tag:"adjective",level:1},
+  {id:"W056",kn:"ಕೆಟ್ಟ",dev:"केट्ट",meaning:"bad",tag:"adjective",level:1},
+  {id:"W057",kn:"ಬೆಲೆ",dev:"बेले",meaning:"price",tag:"value",level:1},
+  {id:"W058",kn:"ಹಣ",dev:"हण",meaning:"money",tag:"value",level:1},
+  {id:"W059",kn:"ಕೆಲಸ",dev:"केलस",meaning:"work",tag:"activity",level:1},
+  {id:"W060",kn:"ಆಟ",dev:"आट",meaning:"game",tag:"activity",level:1},
+  {id:"W061",kn:"ಪಾಠ",dev:"पाठ",meaning:"lesson",tag:"education",level:1},
+  {id:"W062",kn:"ಪುಸ್ತಕ",dev:"पुस्तक",meaning:"book",tag:"object",level:1},
+  {id:"W063",kn:"ಪೆನ್",dev:"पेन",meaning:"pen",tag:"object",level:1},
+  {id:"W064",kn:"ಕಾಗದ",dev:"कागद",meaning:"paper",tag:"object",level:1},
+  {id:"W065",kn:"ಚಿತ್ರ",dev:"चित्र",meaning:"picture",tag:"object",level:1},
+  {id:"W066",kn:"ಹಾಡು",dev:"हाडु",meaning:"song",tag:"art",level:1},
+  {id:"W067",kn:"ನೃತ್ಯ",dev:"नृत्य",meaning:"dance",tag:"art",level:1},
+  {id:"W068",kn:"ಭಾಷೆ",dev:"भाषे",meaning:"language",tag:"language",level:1},
+  {id:"W069",kn:"ಶಬ್ದ",dev:"शब्द",meaning:"sound or word",tag:"abstract",level:1},
+  {id:"W070",kn:"ಪ್ರಶ್ನೆ",dev:"प्रश्ने",meaning:"question",tag:"abstract",level:1},
+  {id:"W071",kn:"ಉತ್ತರ",dev:"उत्तर",meaning:"answer",tag:"abstract",level:1},
+  {id:"W072",kn:"ಸತ್ಯ",dev:"सत्य",meaning:"truth",tag:"abstract",level:1},
+  {id:"W073",kn:"ಸುಳ್ಳು",dev:"सुळ्ळु",meaning:"lie / falsehood",tag:"abstract",level:1},
+  {id:"W074",kn:"ಮಾರ್ಗ",dev:"मार्ग",meaning:"path or way",tag:"place",level:2},
+  {id:"W075",kn:"ಯಾತ್ರೆ",dev:"यात्रे",meaning:"journey",tag:"activity",level:2},
+  {id:"W076",kn:"ವಿಮಾನ",dev:"विमान",meaning:"airplane",tag:"transport",level:1},
+  {id:"W077",kn:"ಬಸ್",dev:"बस",meaning:"bus",tag:"transport",level:1},
+  {id:"W078",kn:"ರೈಲು",dev:"रैलु",meaning:"train",tag:"transport",level:1},
+  {id:"W079",kn:"ಸೈಕಲ್",dev:"सैकल",meaning:"bicycle",tag:"transport",level:1},
+  {id:"W080",kn:"ಕಾರು",dev:"कारु",meaning:"car",tag:"transport",level:1},
+  {id:"W081",kn:"ಗಡಿ",dev:"गडि",meaning:"border",tag:"place",level:2},
+  {id:"W082",kn:"ಭೂಮಿ",dev:"भूमि",meaning:"earth",tag:"planet",level:1},
+  {id:"W083",kn:"ಆಕಾಶ",dev:"आकाश",meaning:"sky",tag:"nature",level:1},
+  {id:"W084",kn:"ಗಾಳಿ",dev:"गाळि",meaning:"wind",tag:"nature",level:1},
+  {id:"W085",kn:"ಮಣ್ಣು",dev:"मण्णु",meaning:"soil",tag:"nature",level:1},
+  {id:"W086",kn:"ಮರ",dev:"मर",meaning:"tree",tag:"nature",level:1},
+  {id:"W087",kn:"ಹೂವು",dev:"हूवु",meaning:"flower",tag:"nature",level:1},
+  {id:"W088",kn:"ಎಲೆ",dev:"एले",meaning:"leaf",tag:"nature",level:1},
+  {id:"W089",kn:"ನದಿ",dev:"नदि",meaning:"river",tag:"nature",level:1},
+  {id:"W090",kn:"ಸರೋವರ",dev:"सरोवर",meaning:"lake",tag:"nature",level:1},
+  {id:"W091",kn:"ಪರ್ವತ",dev:"पर्वत",meaning:"mountain",tag:"nature",level:1},
+  {id:"W092",kn:"ದಾರಿ",dev:"दारि",meaning:"path",tag:"place",level:1},
+  {id:"W093",kn:"ಬೆಳಕು",dev:"बेळकु",meaning:"light",tag:"nature",level:1},
+  {id:"W094",kn:"ಕತ್ತಲೆ",dev:"कत्तले",meaning:"darkness",tag:"nature",level:1},
+  {id:"W095",kn:"ಸ್ನೇಹ",dev:"स्नेह",meaning:"friendship",tag:"emotion",level:1},
+  {id:"W096",kn:"ಪ್ರೀತಿ",dev:"प्रीति",meaning:"love",tag:"emotion",level:1},
+  {id:"W097",kn:"ಭಯ",dev:"भय",meaning:"fear",tag:"emotion",level:1},
+  {id:"W098",kn:"ಸಂತೋಷ",dev:"संतोष",meaning:"happiness",tag:"emotion",level:1},
+  {id:"W099",kn:"ದುಃಖ",dev:"दुःख",meaning:"sorrow",tag:"emotion",level:1},
+  {id:"W100",kn:"ಜೀವನ",dev:"जीवन",meaning:"life",tag:"abstract",level:1}
+];
+
+/* ══════════════════════════════════════════
+   STORAGE
+══════════════════════════════════════════ */
+const PROG_KEY = 'kn_words_progress_v1';
+
+function loadProg() {
+  try {
+    const p = JSON.parse(localStorage.getItem(PROG_KEY) || '{}');
+    return {
+      totalSessions: p.totalSessions || 0,
+      totalReviewed: p.totalReviewed || 0,
+      totalCorrect:  p.totalCorrect  || 0,
+      totalWrong:    p.totalWrong    || 0,
+      sessions:      p.sessions      || [],
+      wordStats:     p.wordStats     || {}
+    };
+  } catch { return { totalSessions:0, totalReviewed:0, totalCorrect:0, totalWrong:0, sessions:[], wordStats:{} }; }
+}
+
+function saveProg(p) { localStorage.setItem(PROG_KEY, JSON.stringify(p)); }
+
+/* ══════════════════════════════════════════
+   HELPERS
+══════════════════════════════════════════ */
+const qs  = (sel, ctx=document) => ctx.querySelector(sel);
+const qsa = (sel, ctx=document) => Array.from(ctx.querySelectorAll(sel));
+
+function show(which) {
+  qsa('.screen').forEach(s => s.classList.remove('active'));
+  qs('#screen-' + which).classList.add('active');
+}
+
+function shuffle(arr) { return [...arr].sort(() => Math.random() - 0.5); }
+
+function escHtml(s) {
+  return String(s || '').replace(/[&<>"']/g, c =>
+    ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]));
+}
+
+function relTime(iso) {
+  if (!iso) return 'never';
+  const d = new Date(iso), now = Date.now(), diff = now - d;
+  const m = Math.floor(diff/60000), h = Math.floor(diff/3600000), dy = Math.floor(diff/86400000);
+  if (m < 1)  return 'just now';
+  if (m < 60) return `${m}m ago`;
+  if (h < 24) return `${h}h ago`;
+  if (dy < 7) return `${dy}d ago`;
+  return d.toLocaleDateString(undefined, { month:'short', day:'numeric' });
+}
+
+function fmtDur(sec) {
+  const m = Math.floor(sec/60), s = sec%60;
+  return m > 0 ? `${m}m ${s}s` : `${s}s`;
+}
+
+/* ══════════════════════════════════════════
+   LEITNER / WEIGHTING
+══════════════════════════════════════════ */
+function getStat(prog, id) {
+  return prog.wordStats[id] || { attempts:0, correct:0, wrong:0, box:0, lastSeenISO:null };
+}
+
+function weight(word, prog) {
+  const s = getStat(prog, word.id);
+  const box = Math.max(0, Math.min(3, s.box || 0));
+  const base = [8, 4, 2, 1][box];
+  const wrongRate = s.attempts > 0 ? (s.wrong / s.attempts) : 0;
+  const unseen = s.attempts === 0 ? 1.8 : 1.0;
+  return base * (1 + wrongRate * 4) * unseen;
+}
+
+function weightedSample(pool, k, prog) {
+  if (k >= pool.length) return shuffle(pool);
+  const arr = pool.slice();
+  const picked = [];
+  let wts = arr.map(w => weight(w, prog));
+  for (let n = 0; n < k; n++) {
+    const total = wts.reduce((a, b) => a + b, 0);
+    let r = Math.random() * total, pi = 0;
+    for (let i = 0; i < wts.length; i++) { r -= wts[i]; if (r <= 0) { pi = i; break; } }
+    picked.push(arr[pi]);
+    arr.splice(pi, 1); wts.splice(pi, 1);
+  }
+  return picked;
+}
+
+function isWeak(word, prog) {
+  const s = getStat(prog, word.id);
+  if (s.wrong > 0) return true;
+  if (s.attempts >= 3 && s.attempts > 0 && (s.correct / s.attempts) < 0.8) return true;
+  if (s.attempts > 0 && (s.box || 0) === 0) return true;
+  return false;
+}
+
+function countWeak(prog) { return WORDS.filter(w => isWeak(w, prog)).length; }
+
+/* ══════════════════════════════════════════
+   SPEECH
+══════════════════════════════════════════ */
+function speakKn(text) {
+  if (!window.speechSynthesis || !window.SpeechSynthesisUtterance) return false;
+  try {
+    speechSynthesis.cancel();
+    const u = new SpeechSynthesisUtterance(text);
+    u.lang = 'kn-IN'; u.rate = 0.9;
+    speechSynthesis.speak(u);
+    return true;
+  } catch { return false; }
+}
+
+/* ══════════════════════════════════════════
+   STATE
+══════════════════════════════════════════ */
+let PROG = loadProg();
+let session = { words:[], idx:0, phase:'glimpse', timer:null, timerTick:null,
+                scored:false, reviewed:0, correct:0, wrong:0, startMs:0 };
+
+/* ══════════════════════════════════════════
+   HOME
+══════════════════════════════════════════ */
+function renderHome() {
+  const avg = PROG.totalReviewed > 0
+    ? Math.round((PROG.totalCorrect / PROG.totalReviewed) * 100) : 0;
+  qs('#quick-stats').innerHTML = [
+    ['Sessions', PROG.totalSessions],
+    ['Avg Accuracy', avg + '%'],
+    ['Weak Words', countWeak(PROG)]
+  ].map(([label, val]) => `
+    <div class="rounded-xl border border-slate-200 p-4 text-center">
+      <div class="text-2xl font-bold">${val}</div>
+      <div class="text-xs text-slate-400 uppercase tracking-wide mt-1">${label}</div>
+    </div>`).join('');
+}
+
+/* ══════════════════════════════════════════
+   SESSION
+══════════════════════════════════════════ */
+function startSession() {
+  clearSession();
+  PROG = loadProg();
+
+  const glimpseSec  = Number(qs('#glimpse-seconds').value);
+  const size        = Number(qs('#session-size').value);
+  const mode        = qs('#practice-mode').value;
+
+  let pool = WORDS.slice();
+  if (mode === 'mistakes') {
+    const weak = pool.filter(w => isWeak(w, PROG));
+    if (weak.length > 0) pool = weak;
+  }
+
+  session.words   = weightedSample(pool, Math.min(size, pool.length), PROG);
+  session.idx     = 0;
+  session.reviewed= 0;
+  session.correct = 0;
+  session.wrong   = 0;
+  session.startMs = Date.now();
+  session.glimpseSec = glimpseSec;
+
+  qs('#card-total').textContent = String(session.words.length);
+  show('train');
+  runCard();
+}
+
+function runCard() {
+  clearSession();
+  session.scored = false;
+  setPhase('glimpse');
+
+  const w = session.words[session.idx];
+  qs('#card-index').textContent = String(session.idx + 1);
+  qs('#word-glimpse').textContent = w.kn;
+  updateProgress();
+
+  // Glimpse bar: smooth RAF drain from 100% → 0% over glimpseSec
+  const bar = qs('#glimpse-bar');
+  bar.style.transition = 'none';
+  bar.style.width = '100%';
+
+  const durationMs = session.glimpseSec * 1000;
+  const startMs = performance.now();
+  let rafId;
+
+  function tick(now) {
+    const elapsed = now - startMs;
+    const pct = Math.max(0, 1 - elapsed / durationMs);
+    bar.style.width = (pct * 100).toFixed(1) + '%';
+    // Colour shift: slate → amber in final 25%
+    if (pct < 0.25) {
+      bar.style.backgroundColor = '#f59e0b'; // amber-400
+    } else {
+      bar.style.backgroundColor = '#94a3b8'; // slate-400
+    }
+    if (pct > 0) rafId = requestAnimationFrame(tick);
+  }
+  rafId = requestAnimationFrame(tick);
+  session.timerTick = { cancel: () => cancelAnimationFrame(rafId) };
+
+  // Digit countdown in timer-display
+  let remaining = session.glimpseSec;
+  qs('#timer-display').textContent = remaining + 's';
+  const tickInterval = setInterval(() => {
+    remaining--;
+    qs('#timer-display').textContent = remaining > 0 ? remaining + 's' : '';
+    if (remaining <= 0) clearInterval(tickInterval);
+  }, 1000);
+  session._countdownInterval = tickInterval;
+
+  session.timer = setTimeout(() => reveal(), durationMs);
+}
+
+function reveal() {
+  clearSession();
+  setPhase('reveal');
+
+  const w = session.words[session.idx];
+  qs('#word-reveal').textContent = w.kn;
+  qs('#dev-line').textContent    = w.dev || '—';
+  qs('#meaning-line').textContent= w.meaning || '—';
+  qs('#speech-note').classList.add('hidden');
+  qs('#timer-display').textContent = '';
+
+  if (qs('#speak-on-reveal').checked) {
+    const ok = speakKn(w.kn);
+    if (!ok) qs('#speech-note').classList.remove('hidden');
+  }
+}
+
+function setPhase(p) {
+  session.phase = p;
+  const pill = qs('#phase-pill');
+  if (p === 'glimpse') {
+    pill.textContent = 'Glimpse';
+    pill.className = 'text-xs font-semibold px-3 py-1 rounded-full bg-slate-100 text-slate-600';
+    qs('#glimpse-panel').classList.remove('hidden');
+    qs('#reveal-panel').classList.add('hidden');
+    qs('#btn-nav').textContent = 'Reveal';
+  } else {
+    pill.textContent = 'Reveal + Score';
+    pill.className = 'text-xs font-semibold px-3 py-1 rounded-full bg-amber-100 text-amber-700';
+    qs('#glimpse-panel').classList.add('hidden');
+    qs('#reveal-panel').classList.remove('hidden');
+    qs('#btn-nav').textContent = 'Next →';
+  }
+}
+
+function updateProgress() {
+  const pct = session.words.length > 0
+    ? Math.round((session.idx / session.words.length) * 100) : 0;
+  qs('#progress-bar').style.width = pct + '%';
+}
+
+function scoreCard(correct) {
+  if (session.phase !== 'reveal' || session.scored) return;
+  session.scored = true;
+
+  const w = session.words[session.idx];
+  PROG.wordStats = PROG.wordStats || {};
+  if (!PROG.wordStats[w.id])
+    PROG.wordStats[w.id] = { attempts:0, correct:0, wrong:0, box:0, lastSeenISO:null };
+  const s = PROG.wordStats[w.id];
+  s.attempts++;
+  s.lastSeenISO = new Date().toISOString();
+
+  if (correct) {
+    s.correct++;
+    s.box = Math.min(3, (s.box || 0) + 1);
+    session.correct++;
+    PROG.totalCorrect++;
+  } else {
+    s.wrong++;
+    s.box = 0;
+    session.wrong++;
+    PROG.totalWrong++;
+  }
+  PROG.totalReviewed++;
+  session.reviewed++;
+  saveProg(PROG);
+
+  // highlight button
+  const btnRight = qs('#btn-right');
+  const btnWrong = qs('#btn-wrong');
+  if (correct) {
+    btnRight.classList.add('bg-emerald-50');
+    btnWrong.classList.remove('bg-rose-50');
+  } else {
+    btnWrong.classList.add('bg-rose-50');
+    btnRight.classList.remove('bg-emerald-50');
+  }
+
+  if (qs('#auto-advance').checked) setTimeout(() => nextCard(), 350);
+}
+
+function nextCard() {
+  clearSession();
+  if (session.idx >= session.words.length - 1) { finishSession(); return; }
+  session.idx++;
+  runCard();
+}
+
+function backCard() {
+  clearSession();
+  if (session.idx > 0) session.idx--;
+  runCard();
+}
+
+function finishSession() {
+  clearSession();
+  const dur = Math.round((Date.now() - session.startMs) / 1000);
+  const acc = session.reviewed > 0
+    ? Math.round((session.correct / session.reviewed) * 100) : 0;
+
+  PROG.totalSessions++;
+  PROG.sessions.unshift({
+    date: new Date().toISOString(),
+    reviewed: session.reviewed,
+    correct: session.correct,
+    wrong: session.wrong,
+    duration: dur,
+    glimpseSec: session.glimpseSec
+  });
+  if (PROG.sessions.length > 60) PROG.sessions = PROG.sessions.slice(0, 60);
+  saveProg(PROG);
+
+  qs('#end-summary').textContent =
+    `${session.reviewed} reviewed · ${session.correct} correct · ${fmtDur(dur)}`;
+
+  qs('#end-stats').innerHTML = [
+    ['Accuracy', acc + '%'],
+    ['Correct', session.correct],
+    ['Wrong', session.wrong]
+  ].map(([label, val]) => `
+    <div class="rounded-xl border border-slate-200 p-4 text-center">
+      <div class="text-sm text-slate-400">${label}</div>
+      <div class="text-2xl font-bold mt-1">${val}</div>
+    </div>`).join('');
+
+  show('end');
+}
+
+function clearSession() {
+  if (session.timer)              { clearTimeout(session.timer);  session.timer = null; }
+  if (session.timerTick?.cancel)  { session.timerTick.cancel();   session.timerTick = null; }
+  if (session._countdownInterval) { clearInterval(session._countdownInterval); session._countdownInterval = null; }
+}
+
+/* ══════════════════════════════════════════
+   STATS
+══════════════════════════════════════════ */
+function renderStats() {
+  const avg = PROG.totalReviewed > 0
+    ? Math.round((PROG.totalCorrect / PROG.totalReviewed) * 100) : 0;
+
+  qs('#stats-overall').innerHTML = [
+    ['Sessions', PROG.totalSessions],
+    ['Avg Accuracy', avg + '%'],
+    ['Weak Words', countWeak(PROG)]
+  ].map(([label, val]) => `
+    <div class="rounded-xl border border-slate-200 p-4 text-center">
+      <div class="text-2xl font-bold">${val}</div>
+      <div class="text-xs text-slate-400 uppercase tracking-wide mt-1">${label}</div>
+    </div>`).join('');
+
+  // Recent sessions
+  const recent = (PROG.sessions || []).slice(0, 8);
+  if (recent.length) {
+    qs('#stats-history').innerHTML = `
+      <h3 class="text-base font-bold mb-2">Recent Sessions</h3>
+      <ul class="divide-y border border-slate-100 rounded-xl overflow-hidden text-sm">
+        ${recent.map(s => {
+          const acc = s.reviewed > 0 ? Math.round((s.correct / s.reviewed) * 100) : 0;
+          return `<li class="flex justify-between items-center px-3 py-2 bg-white">
+            <span class="text-slate-400">${relTime(s.date)}</span>
+            <span class="font-medium">${s.correct}/${s.reviewed} · ${acc}% · ${fmtDur(s.duration)}</span>
+          </li>`;
+        }).join('')}
+      </ul>`;
+  } else {
+    qs('#stats-history').innerHTML = '';
+  }
+
+  // Word strength
+  const merged = WORDS.map(w => {
+    const s = getStat(PROG, w.id);
+    const acc = s.attempts > 0 ? Math.round((s.correct / s.attempts) * 100) : null;
+    return { ...w, ...s, acc };
+  }).sort((a, b) =>
+    (a.box - b.box) || (b.wrong - a.wrong) || (a.attempts - b.attempts)
+  );
+
+  qs('#word-strength-list').innerHTML = merged.map(item => {
+    const accText = item.acc === null ? '—' : item.acc + '%';
+    const boxColor = item.box === 0 ? 'bg-rose-100 text-rose-700'
+                   : item.box === 1 ? 'bg-amber-100 text-amber-700'
+                   : 'bg-emerald-100 text-emerald-700';
+    return `
+      <div class="flex items-center justify-between bg-slate-50 rounded-xl px-3 py-2">
+        <div>
+          <span class="kn font-bold text-lg">${escHtml(item.kn)}</span>
+          <span class="text-xs text-slate-400 ml-2">${escHtml(item.meaning)}</span>
+        </div>
+        <div class="flex gap-2 text-xs font-semibold flex-shrink-0">
+          <span class="px-2 py-0.5 rounded-full ${boxColor}">Box ${item.box}</span>
+          <span class="px-2 py-0.5 rounded-full bg-slate-200 text-slate-600">${accText}</span>
+        </div>
+      </div>`;
+  }).join('');
+}
+
+/* ══════════════════════════════════════════
+   RESET
+══════════════════════════════════════════ */
+function resetProgress() {
+  if (!confirm('Reset all word progress? This cannot be undone.')) return;
+  localStorage.removeItem(PROG_KEY);
+  PROG = loadProg();
+  show('home');
+  renderHome();
+}
+
+/* ══════════════════════════════════════════
+   EVENT WIRING
+══════════════════════════════════════════ */
+qs('#btn-start').addEventListener('click', startSession);
+qs('#btn-show-stats').addEventListener('click', () => { renderStats(); show('stats'); });
+qs('#btn-reset').addEventListener('click', resetProgress);
+
+qs('#btn-nav').addEventListener('click', () => {
+  if (session.phase === 'glimpse') reveal();
+  else nextCard();
+});
+qs('#btn-back').addEventListener('click', backCard);
+qs('#btn-right').addEventListener('click', () => scoreCard(true));
+qs('#btn-wrong').addEventListener('click', () => scoreCard(false));
+qs('#btn-home-from-train').addEventListener('click', () => { clearSession(); show('home'); renderHome(); });
+
+qs('#btn-again').addEventListener('click', startSession);
+qs('#btn-home-from-end').addEventListener('click', () => { show('home'); renderHome(); });
+
+qs('#btn-home-from-stats').addEventListener('click', () => { show('home'); renderHome(); });
+qs('#btn-reset-stats').addEventListener('click', resetProgress);
+
+/* ══════════════════════════════════════════
+   INIT
+══════════════════════════════════════════ */
+renderHome();
+show('home');
+
+/* ══════════════════════════════════════════
+   SERVICE WORKER REGISTRATION
+══════════════════════════════════════════ */
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('sw.js').catch(() => {});
+  });
+}
+
+})();
+</script>
+
+</body>
+</html>

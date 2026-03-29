@@ -1,0 +1,655 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Kannada Alphabet Trainer – Letters</title>
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#f8fafc">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<script src="https://cdn.tailwindcss.com"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=Noto+Sans+Kannada:wght@600;700&display=swap" rel="stylesheet"/>
+
+<style>
+body { font-family: Inter, system-ui, sans-serif; }
+.kn { font-family: 'Noto Sans Kannada', Inter, sans-serif; }
+.screen { display:none; }
+.screen.active { display:block; }
+.shadow-soft { box-shadow: 0 8px 28px rgba(0,0,0,0.08); }
+
+.timer-ring {
+  width: 48px;
+  height: 48px;
+  display: grid;
+  place-items: center;
+  font-weight: 600;
+  font-size: 1.1rem;
+  color: #334155;
+}
+.timer-ring::after {
+  content: attr(data-time);
+}
+</style>
+</head>
+
+<body class="bg-slate-50 text-slate-900">
+
+<div class="max-w-3xl mx-auto p-6">
+
+<header class="flex items-center gap-3 mb-6">
+<div class="text-xl">🕉️</div>
+<h1 class="text-2xl font-bold">Kannada Alphabet Trainer</h1>
+<div class="ml-auto text-sm text-slate-500">Letters</div>
+</header>
+
+<!-- ================= HOME DASHBOARD ================= -->
+<section id="home" class="screen active">
+<div class="bg-white rounded-2xl shadow-soft p-8 text-center space-y-6">
+
+<h2 class="text-lg text-slate-600">ಅಕ್ಷರ → देवनागरी</h2>
+
+<div id="quickStats" class="grid grid-cols-3 gap-4"></div>
+
+<p id="lastSessionInfo" class="text-slate-600"></p>
+
+<button id="startBtn"
+class="w-full py-4 bg-black text-white rounded-xl text-lg font-semibold hover:bg-slate-800">
+Start Session
+</button>
+
+
+<button id="weakBtn"
+class="w-full py-4 border rounded-xl text-lg font-semibold hover:bg-slate-50">
+Practice Weak Letters (&lt;99%)
+</button>
+
+<button id="viewStatsBtn"
+class="w-full py-4 border rounded-xl text-lg hover:bg-slate-50">
+View Detailed Stats
+</button>
+
+</div>
+</section>
+
+<!-- ================= SETTINGS ================= -->
+<section id="settings" class="screen">
+<div class="bg-white rounded-2xl shadow-soft p-8 space-y-6">
+
+<div id="modeBanner" class="hidden px-4 py-3 rounded-xl bg-slate-100 text-slate-700">
+  <span class="font-semibold">Mode:</span> Weak Letters Practice (accuracy &lt; 99% with at least 8 attempts)
+</div>
+
+<div>
+<label class="block font-semibold mb-2">Subset</label>
+<label class="flex items-center gap-2">
+<input type="radio" name="subset" value="all" checked> Full Alphabet
+</label>
+<label class="flex items-center gap-2">
+<input type="radio" name="subset" value="vowel"> Vowels Only
+</label>
+<label class="flex items-center gap-2">
+<input type="radio" name="subset" value="consonant"> Consonants Only
+</label>
+</div>
+
+<div>
+<label class="block font-semibold mb-2">Number of Cards</label>
+<select id="cardCount" class="w-full border rounded-lg px-3 py-2">
+<option value="5">5</option>
+<option value="10" selected>10</option>
+<option value="20">20</option>
+<option value="full">Full Set</option>
+</select>
+</div>
+
+<div>
+<label class="block font-semibold mb-2">Timer</label>
+<select id="timerSelect" class="w-full border rounded-lg px-3 py-2">
+<option value="0">Off</option>
+<option value="5" selected>5s</option>
+<option value="3">3s</option>
+<option value="2">2s</option>
+</select>
+</div>
+
+<div class="flex gap-3">
+<button id="beginSession"
+class="flex-1 py-3 bg-black text-white rounded-xl hover:bg-slate-800">
+▶ Start
+</button>
+<button onclick="show('home')"
+class="flex-1 py-3 border rounded-xl hover:bg-slate-50">
+Cancel
+</button>
+</div>
+
+</div>
+</section>
+
+<!-- ================= PLAY ================= -->
+<section id="play" class="screen">
+<div class="bg-white rounded-2xl shadow-soft p-8">
+
+<div class="flex items-center mb-6">
+<div class="font-semibold text-slate-600">Practice</div>
+<div class="ml-auto">
+<div id="timerRing" class="timer-ring" data-time=""></div>
+</div>
+</div>
+
+
+<div class="w-full bg-slate-100 rounded-full h-1.5 mb-6">
+<div id="progressBar" class="bg-slate-800 h-1.5 rounded-full transition-all duration-300" style="width:0%"></div>
+</div>
+<div class="text-center mb-8">
+<div id="prompt" class="kn text-8xl font-bold"></div>
+</div>
+
+<div id="options" class="space-y-3 max-w-md mx-auto"></div>
+
+<div class="mt-8 text-sm text-slate-500 flex justify-between">
+<div>Card <span id="cardIndex"></span>/<span id="cardTotal"></span></div>
+<div>Score <span id="score"></span></div>
+</div>
+
+</div>
+</section>
+
+<!-- ================= END ================= -->
+<section id="end" class="screen">
+<div class="bg-white rounded-2xl shadow-soft p-8 space-y-6">
+
+<h2 class="text-2xl font-bold">Session Complete</h2>
+<p id="scoreText"></p>
+
+<div id="perfectBox" class="hidden">🎉 Perfect round!</div>
+
+<div id="mistakeSection" class="hidden">
+<h3 class="font-semibold mb-2">Wrong Letters</h3>
+<ul id="mistakeList"></ul>
+</div>
+
+<div class="flex gap-3">
+<button id="retryBtn"
+class="flex-1 py-3 border rounded-xl hover:bg-slate-50">
+Retry Mistakes
+</button>
+<button onclick="show('home')"
+class="flex-1 py-3 bg-black text-white rounded-xl hover:bg-slate-800">
+Home
+</button>
+</div>
+
+</div>
+</section>
+
+<!-- ================= STATS ================= -->
+<section id="stats" class="screen">
+<div class="bg-white rounded-2xl shadow-soft p-8 space-y-6">
+
+<h2 class="text-xl font-bold">Your Progress</h2>
+
+<div id="overallStats"></div>
+<div id="recentHistory"></div>
+<div id="letterStats"></div>
+
+<button id="resetLetterStatsBtn"
+class="w-full py-3 border border-rose-300 text-rose-600 rounded-xl hover:bg-rose-50">
+Reset Letter Accuracy Data
+</button>
+
+<button onclick="show('home')"
+class="w-full py-3 bg-black text-white rounded-xl hover:bg-slate-800">
+Back to Home
+</button>
+
+</div>
+</section>
+
+</div>
+
+<script>
+
+/* ================= LETTER DATA ================= */
+
+const LETTERS = [
+{kn:"ಅ",dev:"अ",group:"vowel"},
+{kn:"ಆ",dev:"आ",group:"vowel"},
+{kn:"ಇ",dev:"इ",group:"vowel"},
+{kn:"ಈ",dev:"ई",group:"vowel"},
+{kn:"ಉ",dev:"उ",group:"vowel"},
+{kn:"ಊ",dev:"ऊ",group:"vowel"},
+{kn:"ಎ",dev:"ए (ह्रस्व)",group:"vowel"},
+{kn:"ಏ",dev:"ए (दीर्घ)",group:"vowel"},
+{kn:"ಐ",dev:"ऐ",group:"vowel"},
+{kn:"ಒ",dev:"ओ (ह्रस्व)",group:"vowel"},
+{kn:"ಓ",dev:"ओ (दीर्घ)",group:"vowel"},
+{kn:"ಔ",dev:"औ",group:"vowel"},
+{kn:"ಅಂ",dev:"अं",group:"vowel"},
+{kn:"ಅಃ",dev:"अः",group:"vowel"},
+{kn:"ಋ",dev:"ऋ",group:"vowel"},
+
+{kn:"ಕ",dev:"क",group:"velar"},
+{kn:"ಖ",dev:"ख",group:"velar"},
+{kn:"ಗ",dev:"ग",group:"velar"},
+{kn:"ಘ",dev:"घ",group:"velar"},
+
+{kn:"ಚ",dev:"च",group:"palatal"},
+{kn:"ಛ",dev:"छ",group:"palatal"},
+{kn:"ಜ",dev:"ज",group:"palatal"},
+{kn:"ಝ",dev:"झ",group:"palatal"},
+
+{kn:"ಟ",dev:"ट",group:"retroflex"},
+{kn:"ಠ",dev:"ठ",group:"retroflex"},
+{kn:"ಡ",dev:"ड",group:"retroflex"},
+{kn:"ಢ",dev:"ढ",group:"retroflex"},
+
+{kn:"ತ",dev:"त",group:"dental"},
+{kn:"ಥ",dev:"थ",group:"dental"},
+{kn:"ದ",dev:"द",group:"dental"},
+{kn:"ಧ",dev:"ध",group:"dental"},
+
+{kn:"ಪ",dev:"प",group:"labial"},
+{kn:"ಫ",dev:"फ",group:"labial"},
+{kn:"ಬ",dev:"ब",group:"labial"},
+{kn:"ಭ",dev:"भ",group:"labial"},
+
+{kn:"ಮ",dev:"म",group:"nasal"},
+{kn:"ನ",dev:"न",group:"nasal"},
+{kn:"ಣ",dev:"ण",group:"nasal"},
+{kn:"ಲ",dev:"ल",group:"liquid"},
+{kn:"ರ",dev:"र",group:"liquid"},
+{kn:"ಯ",dev:"य",group:"semi"},
+{kn:"ವ",dev:"व",group:"semi"},
+{kn:"ಶ",dev:"श",group:"sibilant"},
+{kn:"ಷ",dev:"ष",group:"sibilant"},
+{kn:"ಸ",dev:"स",group:"sibilant"},
+{kn:"ಹ",dev:"ह",group:"aspirate"},
+{kn:"ಳ",dev:"ळ",group:"liquid"},
+{kn:"ಕ್ಷ",dev:"क्ष",group:"consonant"}
+];
+
+const STORAGE_KEY="kannada_alphabet_progress_v1";
+
+/* ================= STORAGE ================= */
+
+function loadProgress(){
+const data=localStorage.getItem(STORAGE_KEY);
+if(!data){
+return{
+sessions:[],
+totalSessions:0,
+totalCorrect:0,
+totalAttempts:0,
+currentStreak:0,
+bestStreak:0,
+letterStats:{}
+};
+}
+return JSON.parse(data);
+}
+
+function saveProgress(p){
+localStorage.setItem(STORAGE_KEY,JSON.stringify(p));
+}
+
+/* ================= SESSION ENGINE ================= */
+
+let session=null;
+let mistakes=[];
+let timerHandle=null;
+let progress=loadProgress();
+
+// Practice mode: "normal" or "weak"
+let practiceMode="normal";
+const WEAK_THRESHOLD_DEFAULT=0.99;
+const WEAK_MIN_ATTEMPTS_DEFAULT=8;
+
+function getWeakCards(basePool, threshold=WEAK_THRESHOLD_DEFAULT, minAttempts=WEAK_MIN_ATTEMPTS_DEFAULT){
+  const stats=(progress && progress.letterStats) ? progress.letterStats : {};
+  return basePool.filter(l=>{
+    const s=stats[l.kn];
+    const attempts=s ? (s.attempts||0) : 0;
+    const correct=s ? (s.correct||0) : 0;
+    if(attempts < minAttempts) return false;
+    const acc = attempts>0 ? (correct/attempts) : 0;
+    return acc < threshold;
+  });
+}
+
+function show(id){
+document.querySelectorAll(".screen").forEach(s=>s.classList.remove("active"));
+document.getElementById(id).classList.add("active");
+}
+
+function shuffle(arr){
+return [...arr].sort(()=>Math.random()-0.5);
+}
+
+function buildOptions(card,pool){
+let others=shuffle(pool.filter(l=>l.kn!==card.kn));
+let selected=[card,...others.slice(0,3)];
+return shuffle(selected).map(x=>x.dev);
+}
+
+function startSession(){
+  const banner=document.getElementById("modeBanner");
+  if(practiceMode==="weak") banner.classList.remove("hidden");
+  else banner.classList.add("hidden");
+  show("settings");
+}
+
+document.getElementById("startBtn").onclick=()=>{ practiceMode="normal"; startSession(); };
+
+document.getElementById("weakBtn").onclick=()=>{ practiceMode="weak"; startSession(); };
+document.getElementById("viewStatsBtn").onclick=()=>{
+renderStats();
+show("stats");
+};
+
+document.getElementById("beginSession").onclick=()=>{
+const subset=document.querySelector('input[name="subset"]:checked').value;
+const countSelect=document.getElementById("cardCount").value;
+const timer=Number(document.getElementById("timerSelect").value);
+
+let basePool=LETTERS;
+if(subset==="vowel") basePool=basePool.filter(l=>l.group==="vowel");
+if(subset==="consonant") basePool=basePool.filter(l=>l.group!=="vowel");
+
+// In weak mode we practice a targeted card list, but keep full basePool for distractor options.
+let cardPool=basePool;
+if(practiceMode==="weak"){
+  const weakCards=getWeakCards(basePool);
+  if(weakCards.length===0){
+    alert("No weak letters found yet (needs a bit more history). Try a normal session first, or lower the threshold in code defaults.");
+    return;
+  }
+  cardPool=weakCards;
+}
+
+let cards;
+if(countSelect==="full") cards=shuffle(cardPool);
+else cards=shuffle(cardPool).slice(0,Number(countSelect));
+
+session={
+subset,
+cards,
+timer,
+index:0,
+score:0,
+startTime:Date.now(),
+mode:practiceMode,
+pool:basePool
+};
+
+mistakes=[];
+document.getElementById("cardTotal").textContent=cards.length;
+document.getElementById("score").textContent=0;
+
+show("play");
+nextCard();
+};
+
+function nextCard(){
+if(session.index>=session.cards.length){
+endSession();
+return;
+}
+renderCard();
+runTimer();
+}
+
+function renderCard(){
+const card=session.cards[session.index];
+document.getElementById("prompt").textContent=card.kn;
+document.getElementById("cardIndex").textContent=session.index+1;
+document.getElementById("progressBar").style.width=
+  Math.round(((session.index)/session.cards.length)*100)+"%";
+
+const options=buildOptions(card,session.pool);
+const box=document.getElementById("options");
+box.innerHTML="";
+
+options.forEach(opt=>{
+const btn=document.createElement("button");
+btn.className="w-full border px-4 py-3 rounded-xl hover:bg-slate-50";
+btn.textContent=opt;
+btn.onclick=()=>selectOption(opt);
+box.appendChild(btn);
+});
+}
+
+function selectOption(value){
+clearInterval(timerHandle);
+const card=session.cards[session.index];
+const correct=card.dev;
+const buttons=document.querySelectorAll("#options button");
+
+const isCorrect = value === correct;
+buttons.forEach(b=>{
+  b.disabled=true;
+  if(b.textContent===correct)
+    b.classList.add("bg-green-500","text-white");
+  else if(b.textContent===value && !isCorrect)
+    b.classList.add("bg-rose-500","text-white");
+  else
+    b.classList.add("opacity-60");
+});
+
+if(!isCorrect){
+  const wrongBtn=Array.from(buttons).find(b=>b.textContent===value);
+  if(wrongBtn){
+    wrongBtn.classList.remove("bg-rose-500","text-white");
+    let blinks=0;
+    const blink=setInterval(()=>{
+      wrongBtn.classList.toggle("bg-rose-500");
+      wrongBtn.classList.toggle("text-white");
+      blinks++;
+      if(blinks>=6){ clearInterval(blink); wrongBtn.classList.add("bg-rose-500","text-white"); }
+    },120);
+  }
+}
+
+updateLetterStats(card,isCorrect);
+if(isCorrect) session.score++;
+else mistakes.push(card);
+
+document.getElementById("score").textContent=session.score;
+
+setTimeout(()=>{
+  session.index++;
+  nextCard();
+},1400);
+}
+
+function runTimer(){
+if(!session.timer) return;
+let t=session.timer;
+document.getElementById("timerRing").setAttribute("data-time",t+"s");
+timerHandle=setInterval(()=>{
+t--;
+document.getElementById("timerRing").setAttribute("data-time",t+"s");
+if(t<=0){
+clearInterval(timerHandle);
+mistakes.push(session.cards[session.index]);
+session.index++;
+nextCard();
+}
+},1200);
+}
+
+function updateLetterStats(card,correct){
+if(!progress.letterStats[card.kn]){
+progress.letterStats[card.kn]={attempts:0,correct:0};
+}
+progress.letterStats[card.kn].attempts++;
+if(correct) progress.letterStats[card.kn].correct++;
+}
+
+function endSession(){
+show("end");
+const total=session.cards.length;
+const accuracy=Math.round((session.score/total)*100);
+document.getElementById("scoreText").textContent=
+`${session.score}/${total} • ${accuracy}%`;
+
+if(mistakes.length===0){
+document.getElementById("perfectBox").classList.remove("hidden");
+document.getElementById("mistakeSection").classList.add("hidden");
+}else{
+document.getElementById("perfectBox").classList.add("hidden");
+document.getElementById("mistakeSection").classList.remove("hidden");
+const list=document.getElementById("mistakeList");
+list.innerHTML="";
+mistakes.forEach(m=>{
+let li=document.createElement("li");
+li.textContent=m.kn+" → "+m.dev;
+list.appendChild(li);
+});
+}
+
+recordSession(total,accuracy);
+saveProgress(progress);
+renderDashboard();
+}
+
+function recordSession(total,accuracy){
+progress.totalSessions++;
+progress.totalCorrect+=session.score;
+progress.totalAttempts+=total;
+
+if(accuracy===100){
+progress.currentStreak++;
+if(progress.currentStreak>progress.bestStreak)
+progress.bestStreak=progress.currentStreak;
+}else{
+progress.currentStreak=0;
+}
+
+progress.sessions.unshift({
+date:new Date().toISOString(),
+accuracy,
+total,
+score:session.score
+});
+
+if(progress.sessions.length>20)
+progress.sessions=progress.sessions.slice(0,20);
+}
+
+document.getElementById("retryBtn").onclick=()=>{
+session.cards=[...mistakes];
+session.index=0;
+session.score=0;
+mistakes=[];
+show("play");
+nextCard();
+};
+
+/* ================= DASHBOARD ================= */
+
+function renderDashboard(){
+const avg=progress.totalAttempts>0?
+Math.round((progress.totalCorrect/progress.totalAttempts)*100):0;
+
+document.getElementById("quickStats").innerHTML=`
+<div class="bg-slate-100 rounded-xl p-4">
+<div class="text-2xl font-bold">${progress.totalSessions}</div>
+<div class="text-sm text-slate-600">Sessions</div>
+</div>
+<div class="bg-slate-100 rounded-xl p-4">
+<div class="text-2xl font-bold">${avg}%</div>
+<div class="text-sm text-slate-600">Avg Accuracy</div>
+</div>
+<div class="bg-slate-100 rounded-xl p-4">
+<div class="text-2xl font-bold">${progress.currentStreak}</div>
+<div class="text-sm text-slate-600">Streak</div>
+</div>
+`;
+
+document.getElementById("lastSessionInfo").textContent=
+progress.sessions.length>0?
+`Last session: ${progress.sessions[0].score}/${progress.sessions[0].total}`:
+"";
+}
+
+function formatSessionDate(isoString){
+  const d=new Date(isoString);
+  const now=new Date();
+  const diffDays=Math.floor((now-d)/(1000*60*60*24));
+  if(diffDays===0) return "Today";
+  if(diffDays===1) return "Yesterday";
+  return d.toLocaleDateString('en-IN',{day:'numeric',month:'short'});
+}
+
+function renderStats(){
+  const avg=progress.totalAttempts>0?
+    Math.round((progress.totalCorrect/progress.totalAttempts)*100):0;
+
+  document.getElementById("overallStats").innerHTML=`
+    <h3 class="font-semibold mb-3">Overview</h3>
+    <div class="grid grid-cols-3 gap-4 text-center">
+      <div class="bg-slate-100 rounded-xl p-4">
+        <div class="text-2xl font-bold">${progress.totalSessions}</div>
+        <div class="text-sm text-slate-600">Sessions</div>
+      </div>
+      <div class="bg-slate-100 rounded-xl p-4">
+        <div class="text-2xl font-bold">${avg}%</div>
+        <div class="text-sm text-slate-600">Avg Accuracy</div>
+      </div>
+      <div class="bg-slate-100 rounded-xl p-4">
+        <div class="text-2xl font-bold">${progress.bestStreak}</div>
+        <div class="text-sm text-slate-600">Best Streak</div>
+      </div>
+    </div>`;
+
+  const recentSessions=progress.sessions.slice(0,5);
+  document.getElementById("recentHistory").innerHTML=`
+    <h3 class="font-semibold mb-3">Recent Sessions</h3>
+    <div class="space-y-2">
+      ${recentSessions.length===0
+        ? `<p class="text-slate-400 text-sm">No sessions yet</p>`
+        : recentSessions.map(s=>`
+        <div class="flex items-center justify-between bg-slate-50 rounded-xl px-4 py-3">
+          <div class="text-sm text-slate-500">${formatSessionDate(s.date)}</div>
+          <div class="font-semibold">${s.score}/${s.total}</div>
+          <div class="text-sm ${s.accuracy===100?'text-green-600':'text-slate-600'}">${s.accuracy}%</div>
+        </div>`).join("")}
+    </div>`;
+
+  const letterStats=progress.letterStats;
+  const weakLetters=Object.keys(letterStats)
+    .map(l=>({
+      kn:l,
+      acc:Math.round((letterStats[l].correct/letterStats[l].attempts)*100),
+      attempts:letterStats[l].attempts
+    }))
+    .filter(l=>l.acc<99)
+    .sort((a,b)=>a.acc-b.acc)
+    .slice(0,10);
+
+  document.getElementById("letterStats").innerHTML=`
+    <h3 class="font-semibold mb-3">Letters to Work On</h3>
+    ${weakLetters.length===0
+      ? `<p class="text-slate-400 text-sm">No weak letters yet — keep practicing!</p>`
+      : `<div class="space-y-2">
+        ${weakLetters.map(l=>`
+        <div class="flex items-center justify-between bg-slate-50 rounded-xl px-4 py-3">
+          <div class="kn text-2xl font-bold">${l.kn}</div>
+          <div class="text-sm text-slate-500">${l.attempts} attempts</div>
+          <div class="font-semibold text-rose-600">${l.acc}%</div>
+        </div>`).join("")}
+      </div>`}`;
+}
+document.getElementById("resetLetterStatsBtn").onclick=()=>{
+  if(confirm("Reset all letter accuracy data? Session history will be kept.")){
+    progress.letterStats={};
+    saveProgress(progress);
+    renderStats();
+  }
+};
+renderDashboard();
+
+</script>
+</body>
+</html>

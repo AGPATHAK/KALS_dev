@@ -1,0 +1,778 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Kannada Matras Trainer</title>
+
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=Noto+Sans+Kannada:wght@500;700&display=swap" rel="stylesheet" />
+
+  <style>
+    body { font-family: Inter, system-ui, sans-serif; }
+    .kn { font-family: 'Noto Sans Kannada', Inter, system-ui, sans-serif; }
+    .shadow-soft { box-shadow: 0 6px 24px rgba(2,6,23,0.06), 0 2px 8px rgba(2,6,23,0.04); }
+    .screen { display:none; }
+    .screen.active { display:block; }
+    .timer-ring {
+      width: 48px;
+      height: 48px;
+      display: grid;
+      place-items: center;
+      font-weight: 600;
+      font-size: 1.1rem;
+      color: #334155;
+    }
+    .timer-ring::after {
+      content: attr(data-time);
+    }
+  </style>
+</head>
+
+<body class="bg-slate-50 text-slate-900">
+<div class="max-w-3xl mx-auto p-6">
+
+  <!-- Header -->
+  <header class="flex items-center gap-3 mb-6">
+    <div class="text-xl">🕉️</div>
+    <h1 class="text-2xl font-bold">Kannada Matras Trainer</h1>
+    <div class="ml-auto text-sm text-slate-500">Matras</div>
+  </header>
+
+  <section id="screen-home" class="screen active">
+    <div class="bg-white rounded-2xl shadow-soft p-8 text-center space-y-6">
+
+      <h2 class="text-lg text-slate-600">ಕಾಗುಣಿತ → देवनागरी</h2>
+
+      <div id="quick-stats" class="grid grid-cols-3 gap-4"></div>
+
+      <p id="last-session-info" class="text-slate-600"></p>
+
+      <!-- Settings -->
+      <div class="grid sm:grid-cols-2 gap-4 text-left">
+        <div>
+          <label class="block text-sm font-medium mb-2">Number of Cards</label>
+          <input id="cards-count" type="number" min="5" max="100" value="20"
+            class="w-full rounded-lg border border-slate-200 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-slate-300" />
+        </div>
+        <div>
+          <label class="block text-sm font-medium mb-2">Timer</label>
+          <select id="timer-seconds"
+            class="w-full rounded-lg border border-slate-200 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-slate-300">
+            <option value="5" selected>5s</option>
+            <option value="3">3s</option>
+            <option value="2">2s</option>
+          </select>
+        </div>
+        <div>
+          <label class="block text-sm font-medium mb-2">Practice Mode</label>
+          <select id="session-mode"
+            class="w-full rounded-lg border border-slate-200 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-slate-300">
+            <option value="mixed" selected>Mixed deck</option>
+            <option value="family">All matras for a random consonant</option>
+            <option value="matra">All consonants for a random matra</option>
+          </select>
+        </div>
+        <div>
+          <label class="block text-sm font-medium mb-2">Distractors</label>
+          <select id="distractor-mode"
+            class="w-full rounded-lg border border-slate-200 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-slate-300">
+            <option value="same-base" selected>Harder: same consonant family</option>
+            <option value="classic">Classic deck options</option>
+          </select>
+        </div>
+      </div>
+
+      <button id="btn-start"
+        class="w-full py-4 bg-black text-white rounded-xl text-lg font-semibold hover:bg-slate-800">
+        Start Session
+      </button>
+
+      <button id="btn-weak"
+        class="w-full py-4 border rounded-xl text-lg font-semibold hover:bg-slate-50">
+        Practice Weak Matras (&lt;99%)
+      </button>
+
+      <button id="btn-toggle-history"
+        class="w-full py-4 border rounded-xl text-lg hover:bg-slate-50">
+        Show History
+      </button>
+
+      <!-- History -->
+      <div id="history-panel" class="hidden text-left">
+        <div class="rounded-xl border border-slate-200 bg-slate-50 p-3">
+          <div class="flex justify-between text-xs mb-2">
+            <span>Recent Runs</span>
+            <button id="btn-clear-history" class="underline">Clear</button>
+          </div>
+          <ul id="history-list" class="text-xs divide-y"></ul>
+        </div>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- ===== Play ===== -->
+  <section id="screen-play" class="screen">
+    <div class="bg-white rounded-2xl shadow-soft p-8">
+
+      <div class="flex items-center mb-6">
+        <div class="font-semibold text-slate-600">Practice</div>
+        <div class="ml-auto">
+          <div id="timer-ring" class="timer-ring" data-time=""></div>
+        </div>
+      </div>
+
+      <div class="w-full bg-slate-100 rounded-full h-1.5 mb-6">
+        <div id="progress-bar" class="bg-slate-800 h-1.5 rounded-full transition-all duration-300" style="width:0%"></div>
+      </div>
+
+      <div class="text-center mb-8">
+        <div id="prompt" class="kn text-8xl font-bold">ಕ</div>
+      </div>
+
+      <div id="options-box" class="space-y-3 max-w-md mx-auto"></div>
+
+      <div class="mt-8 text-sm text-slate-500 flex justify-between">
+        <div>Card <span id="card-index">1</span>/<span id="card-total">20</span></div>
+        <div>Score <span id="score">0</span></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== Results ===== -->
+  <section id="screen-results" class="screen">
+    <div class="bg-white rounded-2xl shadow-soft p-8">
+
+      <h2 class="text-2xl font-bold mb-6">Session Complete</h2>
+
+      <div class="grid sm:grid-cols-3 gap-4">
+        <div class="rounded-xl border p-4">
+          <div class="text-sm text-slate-500">Accuracy</div>
+          <div id="stat-acc" class="text-2xl font-bold">—</div>
+        </div>
+        <div class="rounded-xl border p-4">
+          <div class="text-sm text-slate-500">Avg Response</div>
+          <div id="stat-avg" class="text-2xl font-bold">—</div>
+        </div>
+        <div class="rounded-xl border p-4">
+          <div class="text-sm text-slate-500">Fastest / Slowest</div>
+          <div id="stat-range" class="text-2xl font-bold">—</div>
+        </div>
+      </div>
+
+      <div class="mt-6">
+        <h3 class="font-semibold mb-2">Wrong Items</h3>
+        <ul id="wrong-list" class="space-y-2 text-sm"></ul>
+      </div>
+
+      <div class="mt-8 flex gap-3">
+        <button id="btn-retry-mistakes"
+          class="flex-1 py-3 border rounded-xl hover:bg-slate-50">
+          Retry Mistakes
+        </button>
+        <button id="btn-newrun"
+          class="flex-1 py-3 rounded-xl bg-black text-white rounded-xl hover:bg-slate-800">
+          Home
+        </button>
+      </div>
+
+    </div>
+  </section>
+
+</div>
+
+<!-- IMPORTANT: KEEP YOUR ORIGINAL SCRIPT BLOCK UNCHANGED BELOW -->
+
+  <script>
+(() => {
+    // ---------- Helpers ----------
+    const qs = (sel, el=document) => el.querySelector(sel);
+    const qsa = (sel, el=document) => Array.from(el.querySelectorAll(sel));
+    const screens = { home: qs('#screen-home'), play: qs('#screen-play'), results: qs('#screen-results') };
+    function show(which){ Object.values(screens).forEach(s=> s && s.classList.remove('active')); if(screens[which]) screens[which].classList.add('active'); }
+
+    const Settings = {
+      load(){
+        try{
+          const s = JSON.parse(localStorage.getItem('kft_settings')||'{}');
+          if(s.cardsCount) qs('#cards-count').value = s.cardsCount;
+          if(s.timerSec) qs('#timer-seconds').value = String(s.timerSec);
+          if(s.sessionMode) qs('#session-mode').value = s.sessionMode;
+          if(s.distractorMode) qs('#distractor-mode').value = s.distractorMode;
+        }catch{}
+      },
+      save(){
+        const s = {
+          cardsCount: Number(qs('#cards-count').value||20),
+          timerSec: Number(qs('#timer-seconds').value||5),
+          sessionMode: qs('#session-mode')?.value || 'mixed',
+          distractorMode: qs('#distractor-mode')?.value || 'same-base',
+          level: '2',
+        };
+        localStorage.setItem('kft_settings', JSON.stringify(s));
+        return s;
+      }
+    };
+
+    // ---------- History storage ----------
+    const HistoryStore = {
+      key: 'kft_history',
+      read(){ try{ return JSON.parse(localStorage.getItem(this.key)||'[]'); }catch{ return []; } },
+      write(arr){ localStorage.setItem(this.key, JSON.stringify(arr.slice(0,10))); },
+      clear(){ localStorage.removeItem(this.key); }
+    };
+
+
+    // ---------- Progress (per-item stats) ----------
+    // Stored separately from history so we can drive targeted practice modes.
+    // Keyed by row.id (stable), with attempts/correct + confusion counts.
+    const ProgressStore = {
+      key: 'kft_matras_progress_v1',
+      read(){
+        try{ return JSON.parse(localStorage.getItem(this.key)||'{}'); }catch{ return {}; }
+      },
+      write(obj){
+        localStorage.setItem(this.key, JSON.stringify(obj));
+      },
+      get(){
+        const p = this.read();
+        if(!p || typeof p !== 'object') return { version:1, itemStats:{} };
+        if(!p.version) p.version = 1;
+        if(!p.itemStats || typeof p.itemStats !== 'object') p.itemStats = {};
+        return p;
+      },
+      reset(){ localStorage.removeItem(this.key); }
+    };
+
+    function getItemStat(progress, id){
+      if(!progress.itemStats[id]) progress.itemStats[id] = { attempts:0, correct:0, wrongByOption:{} };
+      const s = progress.itemStats[id];
+      if(!s.wrongByOption || typeof s.wrongByOption !== 'object') s.wrongByOption = {};
+      return s;
+    }
+
+    function recordAttempt(row, wasCorrect, chosenOpt){
+      const progress = ProgressStore.get();
+      const st = getItemStat(progress, String(row.id));
+      st.attempts += 1;
+      if(wasCorrect) st.correct += 1;
+      else {
+        const key = String(chosenOpt ?? '—');
+        st.wrongByOption[key] = (st.wrongByOption[key] || 0) + 1;
+      }
+      ProgressStore.write(progress);
+    }
+
+    const WEAK_DEFAULTS = { minAttempts: 8, threshold: 0.99 };
+
+    function isWeak(row, progress, minAttempts=WEAK_DEFAULTS.minAttempts, threshold=WEAK_DEFAULTS.threshold){
+      const st = progress.itemStats?.[String(row.id)];
+      if(!st) return false;
+      const attempts = Number(st.attempts||0);
+      if(attempts < minAttempts) return false;
+      const acc = attempts ? (Number(st.correct||0) / attempts) : 0;
+      return acc < threshold;
+    }
+
+    // ---------- Deck Loading & Validation ----------
+    const EMBEDDED_DECK = [{"id":"L001","level":1,"prompt":"ಅ","options":["ऐ","ष","अ"],"correctIdx":2,"translit_latn":"","tag":"alphabet"},{"id":"L002","level":1,"prompt":"ಆ","options":["च","ङ","आ"],"correctIdx":2,"translit_latn":"","tag":"alphabet"},{"id":"L003","level":1,"prompt":"ಇ","options":["म","ळ","इ"],"correctIdx":2,"translit_latn":"","tag":"alphabet"},{"id":"L004","level":1,"prompt":"ಈ","options":["इ","आ","ई"],"correctIdx":2,"translit_latn":"","tag":"alphabet"},{"id":"L005","level":1,"prompt":"ಉ","options":["ङ","उ","ब"],"correctIdx":1,"translit_latn":"","tag":"alphabet"},{"id":"L006","level":1,"prompt":"ಊ","options":["ऊ","य","ग"],"correctIdx":0,"translit_latn":"","tag":"alphabet"},{"id":"L007","level":1,"prompt":"ಋ","options":["ऋ","ङ","ध"],"correctIdx":0,"translit_latn":"","tag":"alphabet"},{"id":"L008","level":1,"prompt":"ಎ","options":["ए","अ","क"],"correctIdx":0,"translit_latn":"","tag":"alphabet"},{"id":"L009","level":1,"prompt":"ಏ","options":["ठ","ज","ए"],"correctIdx":2,"translit_latn":"","tag":"alphabet"},{"id":"L010","level":1,"prompt":"ಐ","options":["ऋ","ठ","ऐ"],"correctIdx":2,"translit_latn":"","tag":"alphabet"},{"id":"L011","level":1,"prompt":"ಒ","options":["ओ","ड","ऋ"],"correctIdx":0,"translit_latn":"","tag":"alphabet"},{"id":"L012","level":1,"prompt":"ಓ","options":["इ","ओ","न"],"correctIdx":1,"translit_latn":"","tag":"alphabet"},{"id":"L013","level":1,"prompt":"ಔ","options":["औ","ण","ऊ"],"correctIdx":0,"translit_latn":"","tag":"alphabet"},{"id":"L014","level":1,"prompt":"ಕ","options":["श","क","ष"],"correctIdx":1,"translit_latn":"","tag":"alphabet"},{"id":"L015","level":1,"prompt":"ಖ","options":["ज्ञ","उ","ख"],"correctIdx":2,"translit_latn":"","tag":"alphabet"},{"id":"L016","level":1,"prompt":"ಗ","options":["झ","ऊ","ग"],"correctIdx":2,"translit_latn":"","tag":"alphabet"},{"id":"L017","level":1,"prompt":"ಘ","options":["घ","ज","ण"],"correctIdx":0,"translit_latn":"","tag":"alphabet"},{"id":"L018","level":1,"prompt":"ಙ","options":["ढ","ङ","औ"],"correctIdx":1,"translit_latn":"","tag":"alphabet"},{"id":"L019","level":1,"prompt":"ಚ","options":["ह","च","ज"],"correctIdx":1,"translit_latn":"","tag":"alphabet"},{"id":"L020","level":1,"prompt":"ಛ","options":["व","ष","छ"],"correctIdx":2,"translit_latn":"","tag":"alphabet"},{"id":"L021","level":1,"prompt":"ಜ","options":["ज","न","औ"],"correctIdx":0,"translit_latn":"","tag":"alphabet"},{"id":"L022","level":1,"prompt":"ಝ","options":["ष","झ","क्ष"],"correctIdx":1,"translit_latn":"","tag":"alphabet"},{"id":"L023","level":1,"prompt":"ಞ","options":["ळ","ट","ञ"],"correctIdx":2,"translit_latn":"","tag":"alphabet"},{"id":"L024","level":1,"prompt":"ಟ","options":["ट","ञ","इ"],"correctIdx":0,"translit_latn":"","tag":"alphabet"},{"id":"L025","level":1,"prompt":"ಠ","options":["ठ","उ","ग"],"correctIdx":0,"translit_latn":"","tag":"alphabet"},{"id":"L026","level":1,"prompt":"ಡ","options":["ड","स","ग"],"correctIdx":0,"translit_latn":"","tag":"alphabet"},{"id":"L027","level":1,"prompt":"ಢ","options":["न","स","ढ"],"correctIdx":2,"translit_latn":"","tag":"alphabet"},{"id":"L028","level":1,"prompt":"ಣ","options":["ण","ऐ","ङ"],"correctIdx":0,"translit_latn":"","tag":"alphabet"},{"id":"L029","level":1,"prompt":"ತ","options":["त","ल","द"],"correctIdx":0,"translit_latn":"","tag":"alphabet"},{"id":"L030","level":1,"prompt":"ಥ","options":["घ","ड","थ"],"correctIdx":2,"translit_latn":"","tag":"alphabet"},{"id":"L031","level":1,"prompt":"ದ","options":["ऊ","ई","द"],"correctIdx":2,"translit_latn":"","tag":"alphabet"},{"id":"L032","level":1,"prompt":"ಧ","options":["ध","ष","औ"],"correctIdx":0,"translit_latn":"","tag":"alphabet"},{"id":"L033","level":1,"prompt":"ನ","options":["न","उ","व"],"correctIdx":0,"translit_latn":"","tag":"alphabet"},{"id":"L034","level":1,"prompt":"ಪ","options":["प","व","ध"],"correctIdx":0,"translit_latn":"","tag":"alphabet"},{"id":"L035","level":1,"prompt":"ಫ","options":["य","फ","अ"],"correctIdx":1,"translit_latn":"","tag":"alphabet"},{"id":"L036","level":1,"prompt":"ಬ","options":["ब","म","ळ"],"correctIdx":0,"translit_latn":"","tag":"alphabet"},{"id":"L037","level":1,"prompt":"ಭ","options":["ज","भ","ए"],"correctIdx":1,"translit_latn":"","tag":"alphabet"},{"id":"L038","level":1,"prompt":"ಮ","options":["म","ध","अ"],"correctIdx":0,"translit_latn":"","tag":"alphabet"},{"id":"L039","level":1,"prompt":"ಯ","options":["फ","य","क"],"correctIdx":1,"translit_latn":"","tag":"alphabet"},{"id":"L040","level":1,"prompt":"ರ","options":["ष","र","झ"],"correctIdx":1,"translit_latn":"","tag":"alphabet"},{"id":"L041","level":1,"prompt":"ಲ","options":["ओ","ड","ल"],"correctIdx":2,"translit_latn":"","tag":"alphabet"},{"id":"L042","level":1,"prompt":"ವ","options":["ञ","व","ल"],"correctIdx":1,"translit_latn":"","tag":"alphabet"},{"id":"L043","level":1,"prompt":"ಶ","options":["ड","श","ए"],"correctIdx":1,"translit_latn":"","tag":"alphabet"},{"id":"L044","level":1,"prompt":"ಷ","options":["ई","ष","ङ"],"correctIdx":1,"translit_latn":"","tag":"alphabet"},{"id":"L045","level":1,"prompt":"ಸ","options":["ऊ","प","स"],"correctIdx":2,"translit_latn":"","tag":"alphabet"},{"id":"L046","level":1,"prompt":"ಹ","options":["स","ह","ऐ"],"correctIdx":1,"translit_latn":"","tag":"alphabet"},{"id":"L047","level":1,"prompt":"ಳ","options":["ळ","च","ब"],"correctIdx":0,"translit_latn":"","tag":"alphabet"},{"id":"L048","level":1,"prompt":"ಕ್ಷ","options":["ग","क्ष","भ"],"correctIdx":1,"translit_latn":"","tag":"alphabet"},{"id":"L049","level":1,"prompt":"ಜ್ಞ","options":["ज्ञ","झ","क्ष"],"correctIdx":0,"translit_latn":"","tag":"alphabet"},{"id":"CV001","level":2,"prompt":"ಕಾ","options":["तु","फि","का"],"correctIdx":2,"translit_latn":"","tag":"cv"},{"id":"CV002","level":2,"prompt":"ಕಿ","options":["झे","कि","ठू"],"correctIdx":1,"translit_latn":"","tag":"cv"},{"id":"CV003","level":2,"prompt":"ಕೀ","options":["ङो","ज्ञि","की"],"correctIdx":2,"translit_latn":"","tag":"cv"},{"id":"CV004","level":2,"prompt":"ಕು","options":["कु","चु","टे"],"correctIdx":0,"translit_latn":"","tag":"cv"},{"id":"CV005","level":2,"prompt":"ಕೂ","options":["ढे","कू","घी"],"correctIdx":1,"translit_latn":"","tag":"cv"},{"id":"CV006","level":2,"prompt":"ಕೆ","options":["के","मू","शू"],"correctIdx":0,"translit_latn":"","tag":"cv"},{"id":"CV007","level":2,"prompt":"ಕೇ","options":["धु","ञु","के"],"correctIdx":2,"translit_latn":"","tag":"cv"},{"id":"CV008","level":2,"prompt":"ಕೊ","options":["घो","को","पा"],"correctIdx":1,"translit_latn":"","tag":"cv"},{"id":"CV009","level":2,"prompt":"ಕೋ","options":["ची","घो","को"],"correctIdx":2,"translit_latn":"","tag":"cv"},{"id":"CV010","level":2,"prompt":"ಖಾ","options":["जु","खा","ते"],"correctIdx":1,"translit_latn":"","tag":"cv"},{"id":"CV011","level":2,"prompt":"ಖಿ","options":["चे","खि","ळे"],"correctIdx":1,"translit_latn":"","tag":"cv"},{"id":"CV012","level":2,"prompt":"ಖೀ","options":["थे","पु","खी"],"correctIdx":2,"translit_latn":"","tag":"cv"},{"id":"CV013","level":2,"prompt":"ಖು","options":["शे","खु","ङा"],"correctIdx":1,"translit_latn":"","tag":"cv"},{"id":"CV014","level":2,"prompt":"ಖೂ","options":["ङो","खू","ढो"],"correctIdx":1,"translit_latn":"","tag":"cv"},{"id":"CV015","level":2,"prompt":"ಖೆ","options":["बि","खे","ते"],"correctIdx":1,"translit_latn":"","tag":"cv"},{"id":"CV016","level":2,"prompt":"ಖೇ","options":["वो","नो","खे"],"correctIdx":2,"translit_latn":"","tag":"cv"},{"id":"CV017","level":2,"prompt":"ಖೊ","options":["छी","थि","खो"],"correctIdx":2,"translit_latn":"","tag":"cv"},{"id":"CV018","level":2,"prompt":"ಖೋ","options":["ढे","दू","खो"],"correctIdx":2,"translit_latn":"","tag":"cv"},{"id":"CV019","level":2,"prompt":"ಗಾ","options":["हो","था","गा"],"correctIdx":2,"translit_latn":"","tag":"cv"},{"id":"CV020","level":2,"prompt":"ಗಿ","options":["दा","के","गि"],"correctIdx":2,"translit_latn":"","tag":"cv"},{"id":"CV021","level":2,"prompt":"ಗೀ","options":["ज्ञे","गी","टो"],"correctIdx":1,"translit_latn":"","tag":"cv"},{"id":"CV022","level":2,"prompt":"ಗು","options":["ञो","जि","गु"],"correctIdx":2,"translit_latn":"","tag":"cv"},{"id":"CV023","level":2,"prompt":"ಗೂ","options":["ली","ज्ञी","गू"],"correctIdx":2,"translit_latn":"","tag":"cv"},{"id":"CV024","level":2,"prompt":"ಗೆ","options":["भा","गे","बु"],"correctIdx":1,"translit_latn":"","tag":"cv"},{"id":"CV025","level":2,"prompt":"ಗೇ","options":["छे","गे","ज्ञे"],"correctIdx":1,"translit_latn":"","tag":"cv"},{"id":"CV026","level":2,"prompt":"ಗೊ","options":["ठे","ती","गो"],"correctIdx":2,"translit_latn":"","tag":"cv"},{"id":"CV027","level":2,"prompt":"ಗೋ","options":["फे","तू","गो"],"correctIdx":2,"translit_latn":"","tag":"cv"},{"id":"CV028","level":2,"prompt":"ಘಾ","options":["मा","षु","घा"],"correctIdx":2,"translit_latn":"","tag":"cv"},{"id":"CV029","level":2,"prompt":"ಘಿ","options":["बू","णु","घि"],"correctIdx":2,"translit_latn":"","tag":"cv"},{"id":"CV030","level":2,"prompt":"ಘೀ","options":["घी","ये","दि"],"correctIdx":0,"translit_latn":"","tag":"cv"},{"id":"CV031","level":2,"prompt":"ಘು","options":["क्षे","हे","घु"],"correctIdx":2,"translit_latn":"","tag":"cv"},{"id":"CV032","level":2,"prompt":"ಘೂ","options":["थी","था","घू"],"correctIdx":2,"translit_latn":"","tag":"cv"},{"id":"CV033","level":2,"prompt":"ಘೆ","options":["बे","लो","घे"],"correctIdx":2,"translit_latn":"","tag":"cv"},{"id":"CV034","level":2,"prompt":"ಘೇ","options":["डू","गे","घे"],"correctIdx":2,"translit_latn":"","tag":"cv"},{"id":"CV035","level":2,"prompt":"ಘೊ","options":["घो","भे","ङे"],"correctIdx":0,"translit_latn":"","tag":"cv"},{"id":"CV036","level":2,"prompt":"ಘೋ","options":["घो","जू","हू"],"correctIdx":0,"translit_latn":"","tag":"cv"},{"id":"CV046","level":2,"prompt":"ಚಾ","options":["शा","चा","ठो"],"correctIdx":1,"translit_latn":"","tag":"cv"},{"id":"CV047","level":2,"prompt":"ಚಿ","options":["चि","जो","झो"],"correctIdx":0,"translit_latn":"","tag":"cv"},{"id":"CV048","level":2,"prompt":"ಚೀ","options":["वो","ची","लो"],"correctIdx":1,"translit_latn":"","tag":"cv"},{"id":"CV049","level":2,"prompt":"ಚು","options":["चु","षो","थु"],"correctIdx":0,"translit_latn":"","tag":"cv"},{"id":"CV050","level":2,"prompt":"ಚೂ","options":["तू","चू","ळो"],"correctIdx":1,"translit_latn":"","tag":"cv"},{"id":"CV051","level":2,"prompt":"ಚೆ","options":["धु","चे","दे"],"correctIdx":1,"translit_latn":"","tag":"cv"},{"id":"CV052","level":2,"prompt":"ಚೇ","options":["झी","चे","णे"],"correctIdx":1,"translit_latn":"","tag":"cv"},{"id":"CV053","level":2,"prompt":"ಚೊ","options":["चो","ढि","रे"],"correctIdx":0,"translit_latn":"","tag":"cv"},{"id":"CV054","level":2,"prompt":"ಚೋ","options":["ढे","चो","रा"],"correctIdx":1,"translit_latn":"","tag":"cv"},{"id":"CV055","level":2,"prompt":"ಛಾ","options":["छा","मो","के"],"correctIdx":0,"translit_latn":"","tag":"cv"},{"id":"CV056","level":2,"prompt":"ಛಿ","options":["क्षु","छि","रो"],"correctIdx":1,"translit_latn":"","tag":"cv"},{"id":"CV057","level":2,"prompt":"ಛೀ","options":["छी","दे","सा"],"correctIdx":0,"translit_latn":"","tag":"cv"},{"id":"CV058","level":2,"prompt":"ಛು","options":["यी","छु","शी"],"correctIdx":1,"translit_latn":"","tag":"cv"},{"id":"CV059","level":2,"prompt":"ಛೂ","options":["या","चे","छू"],"correctIdx":2,"translit_latn":"","tag":"cv"},{"id":"CV060","level":2,"prompt":"ಛೆ","options":["थे","छे","ठा"],"correctIdx":1,"translit_latn":"","tag":"cv"},{"id":"CV061","level":2,"prompt":"ಛೇ","options":["छे","शे","फे"],"correctIdx":0,"translit_latn":"","tag":"cv"},{"id":"CV062","level":2,"prompt":"ಛೊ","options":["थि","छो","षा"],"correctIdx":1,"translit_latn":"","tag":"cv"},{"id":"CV063","level":2,"prompt":"ಛೋ","options":["ङा","बु","छो"],"correctIdx":2,"translit_latn":"","tag":"cv"},{"id":"CV064","level":2,"prompt":"ಜಾ","options":["ञु","डा","जा"],"correctIdx":2,"translit_latn":"","tag":"cv"},{"id":"CV065","level":2,"prompt":"ಜಿ","options":["शू","जि","जु"],"correctIdx":1,"translit_latn":"","tag":"cv"},{"id":"CV066","level":2,"prompt":"ಜೀ","options":["जी","खू","नि"],"correctIdx":0,"translit_latn":"","tag":"cv"},{"id":"CV067","level":2,"prompt":"ಜು","options":["यु","ङु","जु"],"correctIdx":2,"translit_latn":"","tag":"cv"},{"id":"CV068","level":2,"prompt":"ಜೂ","options":["जू","बो","जा"],"correctIdx":0,"translit_latn":"","tag":"cv"},{"id":"CV069","level":2,"prompt":"ಜೆ","options":["जे","फा","ङो"],"correctIdx":0,"translit_latn":"","tag":"cv"},{"id":"CV070","level":2,"prompt":"ಜೇ","options":["छे","जे","भो"],"correctIdx":1,"translit_latn":"","tag":"cv"},{"id":"CV071","level":2,"prompt":"ಜೊ","options":["जो","ळू","ली"],"correctIdx":0,"translit_latn":"","tag":"cv"},{"id":"CV072","level":2,"prompt":"ಜೋ","options":["दे","शे","जो"],"correctIdx":2,"translit_latn":"","tag":"cv"},{"id":"CV091","level":2,"prompt":"ಟಾ","options":["टा","वो","ळे"],"correctIdx":0,"translit_latn":"","tag":"cv"},{"id":"CV092","level":2,"prompt":"ಟಿ","options":["छु","टि","ना"],"correctIdx":1,"translit_latn":"","tag":"cv"},{"id":"CV093","level":2,"prompt":"ಟೀ","options":["टु","थि","टी"],"correctIdx":2,"translit_latn":"","tag":"cv"},{"id":"CV094","level":2,"prompt":"ಟು","options":["टु","रो","टा"],"correctIdx":0,"translit_latn":"","tag":"cv"},{"id":"CV095","level":2,"prompt":"ಟೂ","options":["टू","धा","णू"],"correctIdx":0,"translit_latn":"","tag":"cv"},{"id":"CV096","level":2,"prompt":"ಟೆ","options":["शि","टे","णू"],"correctIdx":1,"translit_latn":"","tag":"cv"},{"id":"CV097","level":2,"prompt":"ಟೇ","options":["लि","टे","क्षु"],"correctIdx":1,"translit_latn":"","tag":"cv"},{"id":"CV098","level":2,"prompt":"ಟೊ","options":["दी","ङा","टो"],"correctIdx":2,"translit_latn":"","tag":"cv"},{"id":"CV099","level":2,"prompt":"ಟೋ","options":["टो","जो","धो"],"correctIdx":0,"translit_latn":"","tag":"cv"},{"id":"CV100","level":2,"prompt":"ಠಾ","options":["ठा","हो","यू"],"correctIdx":0,"translit_latn":"","tag":"cv"},{"id":"CV101","level":2,"prompt":"ಠಿ","options":["ठि","ले","चा"],"correctIdx":0,"translit_latn":"","tag":"cv"},{"id":"CV102","level":2,"prompt":"ಠೀ","options":["ठी","णा","खि"],"correctIdx":0,"translit_latn":"","tag":"cv"},{"id":"CV103","level":2,"prompt":"ಠು","options":["ठु","गी","षो"],"correctIdx":0,"translit_latn":"","tag":"cv"},{"id":"CV104","level":2,"prompt":"ಠೂ","options":["दी","लो","ठू"],"correctIdx":2,"translit_latn":"","tag":"cv"},{"id":"CV105","level":2,"prompt":"ಠೆ","options":["फे","ठे","बे"],"correctIdx":1,"translit_latn":"","tag":"cv"},{"id":"CV106","level":2,"prompt":"ಠೇ","options":["ठे","रो","टे"],"correctIdx":0,"translit_latn":"","tag":"cv"},{"id":"CV107","level":2,"prompt":"ಠೊ","options":["ठो","ज्ञा","शि"],"correctIdx":0,"translit_latn":"","tag":"cv"},{"id":"CV108","level":2,"prompt":"ಠೋ","options":["पि","यो","ठो"],"correctIdx":2,"translit_latn":"","tag":"cv"},{"id":"CV109","level":2,"prompt":"ಡಾ","options":["डा","डो","रा"],"correctIdx":0,"translit_latn":"","tag":"cv"},{"id":"CV110","level":2,"prompt":"ಡಿ","options":["ढू","डि","वा"],"correctIdx":1,"translit_latn":"","tag":"cv"},{"id":"CV111","level":2,"prompt":"ಡೀ","options":["सि","धो","डी"],"correctIdx":2,"translit_latn":"","tag":"cv"},{"id":"CV112","level":2,"prompt":"ಡು","options":["डु","टू","ज्ञा"],"correctIdx":0,"translit_latn":"","tag":"cv"},{"id":"CV113","level":2,"prompt":"ಡೂ","options":["जो","चु","डू"],"correctIdx":2,"translit_latn":"","tag":"cv"},{"id":"CV114","level":2,"prompt":"ಡೆ","options":["डे","हू","सू"],"correctIdx":0,"translit_latn":"","tag":"cv"},{"id":"CV115","level":2,"prompt":"ಡೇ","options":["षु","शो","डे"],"correctIdx":2,"translit_latn":"","tag":"cv"},{"id":"CV116","level":2,"prompt":"ಡೊ","options":["डो","दे","झि"],"correctIdx":0,"translit_latn":"","tag":"cv"},{"id":"CV117","level":2,"prompt":"ಡೋ","options":["कू","नो","डो"],"correctIdx":2,"translit_latn":"","tag":"cv"},{"id":"CV118","level":2,"prompt":"ಢಾ","options":["ढा","क्षो","बे"],"correctIdx":0,"translit_latn":"","tag":"cv"},{"id":"CV119","level":2,"prompt":"ಢಿ","options":["ढि","डु","शे"],"correctIdx":0,"translit_latn":"","tag":"cv"},{"id":"CV120","level":2,"prompt":"ಢೀ","options":["ढी","गे","णे"],"correctIdx":0,"translit_latn":"","tag":"cv"},{"id":"CV121","level":2,"prompt":"ಢು","options":["ञो","मे","ढु"],"correctIdx":2,"translit_latn":"","tag":"cv"},{"id":"CV122","level":2,"prompt":"ಢೂ","options":["हे","छो","ढू"],"correctIdx":2,"translit_latn":"","tag":"cv"},{"id":"CV123","level":2,"prompt":"ಢೆ","options":["री","की","ढे"],"correctIdx":2,"translit_latn":"","tag":"cv"},{"id":"CV124","level":2,"prompt":"ಢೇ","options":["ढे","थे","यि"],"correctIdx":0,"translit_latn":"","tag":"cv"},{"id":"CV125","level":2,"prompt":"ಢೊ","options":["पो","ढो","क्षा"],"correctIdx":1,"translit_latn":"","tag":"cv"},{"id":"CV126","level":2,"prompt":"ಢೋ","options":["तू","ढो","णि"],"correctIdx":1,"translit_latn":"","tag":"cv"},{"id":"CV127","level":2,"prompt":"ಣಾ","options":["छो","टू","णा"],"correctIdx":2,"translit_latn":"","tag":"cv"},{"id":"CV128","level":2,"prompt":"ಣಿ","options":["णि","पा","धे"],"correctIdx":0,"translit_latn":"","tag":"cv"},{"id":"CV129","level":2,"prompt":"ಣೀ","options":["ळे","णी","ञु"],"correctIdx":1,"translit_latn":"","tag":"cv"},{"id":"CV130","level":2,"prompt":"ಣು","options":["टी","णु","चे"],"correctIdx":1,"translit_latn":"","tag":"cv"},{"id":"CV131","level":2,"prompt":"ಣೂ","options":["णू","सी","णो"],"correctIdx":0,"translit_latn":"","tag":"cv"},{"id":"CV132","level":2,"prompt":"ಣೆ","options":["शू","णे","को"],"correctIdx":1,"translit_latn":"","tag":"cv"},{"id":"CV133","level":2,"prompt":"ಣೇ","options":["णे","ङो","बू"],"correctIdx":0,"translit_latn":"","tag":"cv"},{"id":"CV134","level":2,"prompt":"ಣೊ","options":["णो","नु","थो"],"correctIdx":0,"translit_latn":"","tag":"cv"},{"id":"CV135","level":2,"prompt":"ಣೋ","options":["णो","छु","मे"],"correctIdx":0,"translit_latn":"","tag":"cv"},{"id":"CV136","level":2,"prompt":"ತಾ","options":["धा","यू","ता"],"correctIdx":2,"translit_latn":"","tag":"cv"},{"id":"CV137","level":2,"prompt":"ತಿ","options":["णे","सू","ति"],"correctIdx":2,"translit_latn":"","tag":"cv"},{"id":"CV138","level":2,"prompt":"ತೀ","options":["ती","थी","छा"],"correctIdx":0,"translit_latn":"","tag":"cv"},{"id":"CV139","level":2,"prompt":"ತು","options":["तु","झि","गे"],"correctIdx":0,"translit_latn":"","tag":"cv"},{"id":"CV140","level":2,"prompt":"ತೂ","options":["तू","डी","री"],"correctIdx":0,"translit_latn":"","tag":"cv"},{"id":"CV141","level":2,"prompt":"ತೆ","options":["ते","दी","ळो"],"correctIdx":0,"translit_latn":"","tag":"cv"},{"id":"CV142","level":2,"prompt":"ತೇ","options":["धे","जो","ते"],"correctIdx":2,"translit_latn":"","tag":"cv"},{"id":"CV143","level":2,"prompt":"ತೊ","options":["णे","ज्ञे","तो"],"correctIdx":2,"translit_latn":"","tag":"cv"},{"id":"CV144","level":2,"prompt":"ತೋ","options":["तो","कू","क्षि"],"correctIdx":0,"translit_latn":"","tag":"cv"},{"id":"CV145","level":2,"prompt":"ಥಾ","options":["भि","था","थे"],"correctIdx":1,"translit_latn":"","tag":"cv"},{"id":"CV146","level":2,"prompt":"ಥಿ","options":["ज्ञे","थि","षा"],"correctIdx":1,"translit_latn":"","tag":"cv"},{"id":"CV147","level":2,"prompt":"ಥೀ","options":["ने","ङो","थी"],"correctIdx":2,"translit_latn":"","tag":"cv"},{"id":"CV148","level":2,"prompt":"ಥು","options":["नो","गा","थु"],"correctIdx":2,"translit_latn":"","tag":"cv"},{"id":"CV149","level":2,"prompt":"ಥೂ","options":["थू","तो","झे"],"correctIdx":0,"translit_latn":"","tag":"cv"},{"id":"CV150","level":2,"prompt":"ಥೆ","options":["क्षे","थे","ञे"],"correctIdx":1,"translit_latn":"","tag":"cv"},{"id":"CV151","level":2,"prompt":"ಥೇ","options":["थे","से","दा"],"correctIdx":0,"translit_latn":"","tag":"cv"},{"id":"CV152","level":2,"prompt":"ಥೊ","options":["वु","थो","ढो"],"correctIdx":1,"translit_latn":"","tag":"cv"},{"id":"CV153","level":2,"prompt":"ಥೋ","options":["थो","भो","बा"],"correctIdx":0,"translit_latn":"","tag":"cv"},{"id":"CV154","level":2,"prompt":"ದಾ","options":["शि","दा","डि"],"correctIdx":1,"translit_latn":"","tag":"cv"},{"id":"CV155","level":2,"prompt":"ದಿ","options":["खा","फु","दि"],"correctIdx":2,"translit_latn":"","tag":"cv"},{"id":"CV156","level":2,"prompt":"ದೀ","options":["ढु","ङो","दी"],"correctIdx":2,"translit_latn":"","tag":"cv"},{"id":"CV157","level":2,"prompt":"ದು","options":["दी","ञा","दु"],"correctIdx":2,"translit_latn":"","tag":"cv"},{"id":"CV158","level":2,"prompt":"ದೂ","options":["ठि","खी","दू"],"correctIdx":2,"translit_latn":"","tag":"cv"},{"id":"CV159","level":2,"prompt":"ದೆ","options":["ते","दे","खी"],"correctIdx":1,"translit_latn":"","tag":"cv"},{"id":"CV160","level":2,"prompt":"ದೇ","options":["ळि","दे","झे"],"correctIdx":1,"translit_latn":"","tag":"cv"},{"id":"CV161","level":2,"prompt":"ದೊ","options":["भो","दो","षो"],"correctIdx":1,"translit_latn":"","tag":"cv"},{"id":"CV162","level":2,"prompt":"ದೋ","options":["दो","णा","वो"],"correctIdx":0,"translit_latn":"","tag":"cv"},{"id":"CV163","level":2,"prompt":"ಧಾ","options":["धा","घो","शा"],"correctIdx":0,"translit_latn":"","tag":"cv"},{"id":"CV164","level":2,"prompt":"ಧಿ","options":["वि","छो","धि"],"correctIdx":2,"translit_latn":"","tag":"cv"},{"id":"CV165","level":2,"prompt":"ಧೀ","options":["धी","ञि","झू"],"correctIdx":0,"translit_latn":"","tag":"cv"},{"id":"CV166","level":2,"prompt":"ಧು","options":["धु","धो","मो"],"correctIdx":0,"translit_latn":"","tag":"cv"},{"id":"CV167","level":2,"prompt":"ಧೂ","options":["धू","ज्ञु","छि"],"correctIdx":0,"translit_latn":"","tag":"cv"},{"id":"CV168","level":2,"prompt":"ಧೆ","options":["धे","णे","फो"],"correctIdx":0,"translit_latn":"","tag":"cv"},{"id":"CV169","level":2,"prompt":"ಧೇ","options":["धे","छे","ले"],"correctIdx":0,"translit_latn":"","tag":"cv"},{"id":"CV170","level":2,"prompt":"ಧೊ","options":["षि","भी","धो"],"correctIdx":2,"translit_latn":"","tag":"cv"},{"id":"CV171","level":2,"prompt":"ಧೋ","options":["छे","चे","धो"],"correctIdx":2,"translit_latn":"","tag":"cv"},{"id":"CV172","level":2,"prompt":"ನಾ","options":["ना","ज्ञो","फि"],"correctIdx":0,"translit_latn":"","tag":"cv"},{"id":"CV173","level":2,"prompt":"ನಿ","options":["ला","नि","धू"],"correctIdx":1,"translit_latn":"","tag":"cv"},{"id":"CV174","level":2,"prompt":"ನೀ","options":["ञो","हु","नी"],"correctIdx":2,"translit_latn":"","tag":"cv"},{"id":"CV175","level":2,"prompt":"ನು","options":["भि","नु","बो"],"correctIdx":1,"translit_latn":"","tag":"cv"},{"id":"CV176","level":2,"prompt":"ನೂ","options":["नू","लो","ज्ञा"],"correctIdx":0,"translit_latn":"","tag":"cv"},{"id":"CV177","level":2,"prompt":"ನೆ","options":["ने","दू","खी"],"correctIdx":0,"translit_latn":"","tag":"cv"},{"id":"CV178","level":2,"prompt":"ನೇ","options":["की","ञे","ने"],"correctIdx":2,"translit_latn":"","tag":"cv"},{"id":"CV179","level":2,"prompt":"ನೊ","options":["नो","खि","ळु"],"correctIdx":0,"translit_latn":"","tag":"cv"},{"id":"CV180","level":2,"prompt":"ನೋ","options":["नो","शे","टे"],"correctIdx":0,"translit_latn":"","tag":"cv"},{"id":"CV181","level":2,"prompt":"ಪಾ","options":["ञी","पा","चा"],"correctIdx":1,"translit_latn":"","tag":"cv"},{"id":"CV182","level":2,"prompt":"ಪಿ","options":["पि","चू","वे"],"correctIdx":0,"translit_latn":"","tag":"cv"},{"id":"CV183","level":2,"prompt":"ಪೀ","options":["रू","ढो","पी"],"correctIdx":2,"translit_latn":"","tag":"cv"},{"id":"CV184","level":2,"prompt":"ಪು","options":["पु","लि","धो"],"correctIdx":0,"translit_latn":"","tag":"cv"},{"id":"CV185","level":2,"prompt":"ಪೂ","options":["गु","या","पू"],"correctIdx":2,"translit_latn":"","tag":"cv"},{"id":"CV186","level":2,"prompt":"ಪೆ","options":["पे","झू","नु"],"correctIdx":0,"translit_latn":"","tag":"cv"},{"id":"CV187","level":2,"prompt":"ಪೇ","options":["जा","से","पे"],"correctIdx":2,"translit_latn":"","tag":"cv"},{"id":"CV188","level":2,"prompt":"ಪೊ","options":["पो","णो","मो"],"correctIdx":0,"translit_latn":"","tag":"cv"},{"id":"CV189","level":2,"prompt":"ಪೋ","options":["ङे","गे","पो"],"correctIdx":2,"translit_latn":"","tag":"cv"},{"id":"CV190","level":2,"prompt":"ಫಾ","options":["फा","ले","ङे"],"correctIdx":0,"translit_latn":"","tag":"cv"},{"id":"CV191","level":2,"prompt":"ಫಿ","options":["या","फि","धि"],"correctIdx":1,"translit_latn":"","tag":"cv"},{"id":"CV192","level":2,"prompt":"ಫೀ","options":["शे","चे","फी"],"correctIdx":2,"translit_latn":"","tag":"cv"},{"id":"CV193","level":2,"prompt":"ಫು","options":["फु","ले","ळि"],"correctIdx":0,"translit_latn":"","tag":"cv"},{"id":"CV194","level":2,"prompt":"ಫೂ","options":["फु","फी","फू"],"correctIdx":2,"translit_latn":"","tag":"cv"},{"id":"CV195","level":2,"prompt":"ಫೆ","options":["डे","फे","ळो"],"correctIdx":1,"translit_latn":"","tag":"cv"},{"id":"CV196","level":2,"prompt":"ಫೇ","options":["ति","ञू","फे"],"correctIdx":2,"translit_latn":"","tag":"cv"},{"id":"CV197","level":2,"prompt":"ಫೊ","options":["फो","ठो","ञि"],"correctIdx":0,"translit_latn":"","tag":"cv"},{"id":"CV198","level":2,"prompt":"ಫೋ","options":["पे","ञो","फो"],"correctIdx":2,"translit_latn":"","tag":"cv"},{"id":"CV199","level":2,"prompt":"ಬಾ","options":["वू","बा","दा"],"correctIdx":1,"translit_latn":"","tag":"cv"},{"id":"CV200","level":2,"prompt":"ಬಿ","options":["वा","नो","बि"],"correctIdx":2,"translit_latn":"","tag":"cv"},{"id":"CV201","level":2,"prompt":"ಬೀ","options":["बी","चो","धि"],"correctIdx":0,"translit_latn":"","tag":"cv"},{"id":"CV202","level":2,"prompt":"ಬು","options":["बु","ज्ञा","वु"],"correctIdx":0,"translit_latn":"","tag":"cv"},{"id":"CV203","level":2,"prompt":"ಬೂ","options":["ही","घो","बू"],"correctIdx":2,"translit_latn":"","tag":"cv"},{"id":"CV204","level":2,"prompt":"ಬೆ","options":["ठा","चो","बे"],"correctIdx":2,"translit_latn":"","tag":"cv"},{"id":"CV205","level":2,"prompt":"ಬೇ","options":["बे","वो","ळी"],"correctIdx":0,"translit_latn":"","tag":"cv"},{"id":"CV206","level":2,"prompt":"ಬೊ","options":["धे","बो","रे"],"correctIdx":1,"translit_latn":"","tag":"cv"},{"id":"CV207","level":2,"prompt":"ಬೋ","options":["बो","ज्ञे","फि"],"correctIdx":0,"translit_latn":"","tag":"cv"},{"id":"CV208","level":2,"prompt":"ಭಾ","options":["भा","ञे","ची"],"correctIdx":0,"translit_latn":"","tag":"cv"},{"id":"CV209","level":2,"prompt":"ಭಿ","options":["भि","यी","चू"],"correctIdx":0,"translit_latn":"","tag":"cv"},{"id":"CV210","level":2,"prompt":"ಭೀ","options":["भी","ळि","फी"],"correctIdx":0,"translit_latn":"","tag":"cv"},{"id":"CV211","level":2,"prompt":"ಭು","options":["हे","भु","खे"],"correctIdx":1,"translit_latn":"","tag":"cv"},{"id":"CV212","level":2,"prompt":"ಭೂ","options":["ढे","सु","भू"],"correctIdx":2,"translit_latn":"","tag":"cv"},{"id":"CV213","level":2,"prompt":"ಭೆ","options":["धि","भे","ञि"],"correctIdx":1,"translit_latn":"","tag":"cv"},{"id":"CV214","level":2,"prompt":"ಭೇ","options":["मी","फी","भे"],"correctIdx":2,"translit_latn":"","tag":"cv"},{"id":"CV215","level":2,"prompt":"ಭೊ","options":["टो","भो","गे"],"correctIdx":1,"translit_latn":"","tag":"cv"},{"id":"CV216","level":2,"prompt":"ಭೋ","options":["वु","भो","वू"],"correctIdx":1,"translit_latn":"","tag":"cv"},{"id":"CV217","level":2,"prompt":"ಮಾ","options":["मा","नो","डे"],"correctIdx":0,"translit_latn":"","tag":"cv"},{"id":"CV218","level":2,"prompt":"ಮಿ","options":["मि","शू","मो"],"correctIdx":0,"translit_latn":"","tag":"cv"},{"id":"CV219","level":2,"prompt":"ಮೀ","options":["झू","टु","मी"],"correctIdx":2,"translit_latn":"","tag":"cv"},{"id":"CV220","level":2,"prompt":"ಮು","options":["भो","छो","मु"],"correctIdx":2,"translit_latn":"","tag":"cv"},{"id":"CV221","level":2,"prompt":"ಮೂ","options":["ची","मू","दो"],"correctIdx":1,"translit_latn":"","tag":"cv"},{"id":"CV222","level":2,"prompt":"ಮೆ","options":["णो","मे","लि"],"correctIdx":1,"translit_latn":"","tag":"cv"},{"id":"CV223","level":2,"prompt":"ಮೇ","options":["यो","मे","रा"],"correctIdx":1,"translit_latn":"","tag":"cv"},{"id":"CV224","level":2,"prompt":"ಮೊ","options":["भु","मि","मो"],"correctIdx":2,"translit_latn":"","tag":"cv"},{"id":"CV225","level":2,"prompt":"ಮೋ","options":["ञी","छे","मो"],"correctIdx":2,"translit_latn":"","tag":"cv"},{"id":"CV226","level":2,"prompt":"ಯಾ","options":["षी","या","षो"],"correctIdx":1,"translit_latn":"","tag":"cv"},{"id":"CV227","level":2,"prompt":"ಯಿ","options":["थु","चा","यि"],"correctIdx":2,"translit_latn":"","tag":"cv"},{"id":"CV228","level":2,"prompt":"ಯೀ","options":["जू","तू","यी"],"correctIdx":2,"translit_latn":"","tag":"cv"},{"id":"CV229","level":2,"prompt":"ಯು","options":["ते","शि","यु"],"correctIdx":2,"translit_latn":"","tag":"cv"},{"id":"CV230","level":2,"prompt":"ಯೂ","options":["क्षा","यू","हु"],"correctIdx":1,"translit_latn":"","tag":"cv"},{"id":"CV231","level":2,"prompt":"ಯೆ","options":["के","धे","ये"],"correctIdx":2,"translit_latn":"","tag":"cv"},{"id":"CV232","level":2,"prompt":"ಯೇ","options":["ठि","ळे","ये"],"correctIdx":2,"translit_latn":"","tag":"cv"},{"id":"CV233","level":2,"prompt":"ಯೊ","options":["यो","मो","गे"],"correctIdx":0,"translit_latn":"","tag":"cv"},{"id":"CV234","level":2,"prompt":"ಯೋ","options":["खे","ङे","यो"],"correctIdx":2,"translit_latn":"","tag":"cv"},{"id":"CV235","level":2,"prompt":"ರಾ","options":["रा","गे","फी"],"correctIdx":0,"translit_latn":"","tag":"cv"},{"id":"CV236","level":2,"prompt":"ರಿ","options":["षी","ठो","रि"],"correctIdx":2,"translit_latn":"","tag":"cv"},{"id":"CV237","level":2,"prompt":"ರೀ","options":["शा","धु","री"],"correctIdx":2,"translit_latn":"","tag":"cv"},{"id":"CV238","level":2,"prompt":"ರು","options":["रु","नो","गे"],"correctIdx":0,"translit_latn":"","tag":"cv"},{"id":"CV239","level":2,"prompt":"ರೂ","options":["डू","रू","था"],"correctIdx":1,"translit_latn":"","tag":"cv"},{"id":"CV240","level":2,"prompt":"ರೆ","options":["रे","जे","फू"],"correctIdx":0,"translit_latn":"","tag":"cv"},{"id":"CV241","level":2,"prompt":"ರೇ","options":["रे","फी","वे"],"correctIdx":0,"translit_latn":"","tag":"cv"},{"id":"CV242","level":2,"prompt":"ರೊ","options":["रो","दि","भो"],"correctIdx":0,"translit_latn":"","tag":"cv"},{"id":"CV243","level":2,"prompt":"ರೋ","options":["रो","चे","ठो"],"correctIdx":0,"translit_latn":"","tag":"cv"},{"id":"CV244","level":2,"prompt":"ಲಾ","options":["ला","छि","पू"],"correctIdx":0,"translit_latn":"","tag":"cv"},{"id":"CV245","level":2,"prompt":"ಲಿ","options":["ली","लि","वे"],"correctIdx":1,"translit_latn":"","tag":"cv"},{"id":"CV246","level":2,"prompt":"ಲೀ","options":["बे","दा","ली"],"correctIdx":2,"translit_latn":"","tag":"cv"},{"id":"CV247","level":2,"prompt":"ಲು","options":["भो","टा","लु"],"correctIdx":2,"translit_latn":"","tag":"cv"},{"id":"CV248","level":2,"prompt":"ಲೂ","options":["लू","गी","ङु"],"correctIdx":0,"translit_latn":"","tag":"cv"},{"id":"CV249","level":2,"prompt":"ಲೆ","options":["ले","भे","गी"],"correctIdx":0,"translit_latn":"","tag":"cv"},{"id":"CV250","level":2,"prompt":"ಲೇ","options":["भे","ले","वि"],"correctIdx":1,"translit_latn":"","tag":"cv"},{"id":"CV251","level":2,"prompt":"ಲೊ","options":["लो","ळे","ये"],"correctIdx":0,"translit_latn":"","tag":"cv"},{"id":"CV252","level":2,"prompt":"ಲೋ","options":["लो","ति","खी"],"correctIdx":0,"translit_latn":"","tag":"cv"},{"id":"CV253","level":2,"prompt":"ವಾ","options":["वा","थू","ज्ञि"],"correctIdx":0,"translit_latn":"","tag":"cv"},{"id":"CV254","level":2,"prompt":"ವಿ","options":["ढू","सु","वि"],"correctIdx":2,"translit_latn":"","tag":"cv"},{"id":"CV255","level":2,"prompt":"ವೀ","options":["ठो","ङो","वी"],"correctIdx":2,"translit_latn":"","tag":"cv"},{"id":"CV256","level":2,"prompt":"ವು","options":["वु","बि","ज्ञो"],"correctIdx":0,"translit_latn":"","tag":"cv"},{"id":"CV257","level":2,"prompt":"ವೂ","options":["टी","भो","वू"],"correctIdx":2,"translit_latn":"","tag":"cv"},{"id":"CV258","level":2,"prompt":"ವೆ","options":["तो","डी","वे"],"correctIdx":2,"translit_latn":"","tag":"cv"},{"id":"CV259","level":2,"prompt":"ವೇ","options":["ज्ञे","शो","वे"],"correctIdx":2,"translit_latn":"","tag":"cv"},{"id":"CV260","level":2,"prompt":"ವೊ","options":["वो","यो","ङू"],"correctIdx":0,"translit_latn":"","tag":"cv"},{"id":"CV261","level":2,"prompt":"ವೋ","options":["रि","वो","झे"],"correctIdx":1,"translit_latn":"","tag":"cv"},{"id":"CV262","level":2,"prompt":"ಶಾ","options":["ळे","वो","शा"],"correctIdx":2,"translit_latn":"","tag":"cv"},{"id":"CV263","level":2,"prompt":"ಶಿ","options":["झे","हा","शि"],"correctIdx":2,"translit_latn":"","tag":"cv"},{"id":"CV264","level":2,"prompt":"ಶೀ","options":["नी","शी","टे"],"correctIdx":1,"translit_latn":"","tag":"cv"},{"id":"CV265","level":2,"prompt":"ಶು","options":["बो","शु","धि"],"correctIdx":1,"translit_latn":"","tag":"cv"},{"id":"CV266","level":2,"prompt":"ಶೂ","options":["झू","शू","ज्ञू"],"correctIdx":1,"translit_latn":"","tag":"cv"},{"id":"CV267","level":2,"prompt":"ಶೆ","options":["शे","ञी","ही"],"correctIdx":0,"translit_latn":"","tag":"cv"},{"id":"CV268","level":2,"prompt":"ಶೇ","options":["शे","चा","गा"],"correctIdx":0,"translit_latn":"","tag":"cv"},{"id":"CV269","level":2,"prompt":"ಶೊ","options":["शो","खो","ढे"],"correctIdx":0,"translit_latn":"","tag":"cv"},{"id":"CV270","level":2,"prompt":"ಶೋ","options":["शो","ते","नो"],"correctIdx":0,"translit_latn":"","tag":"cv"},{"id":"CV271","level":2,"prompt":"ಷಾ","options":["षा","टो","ङा"],"correctIdx":0,"translit_latn":"","tag":"cv"},{"id":"CV272","level":2,"prompt":"ಷಿ","options":["षि","शु","फी"],"correctIdx":0,"translit_latn":"","tag":"cv"},{"id":"CV273","level":2,"prompt":"ಷೀ","options":["झे","षी","बे"],"correctIdx":1,"translit_latn":"","tag":"cv"},{"id":"CV274","level":2,"prompt":"ಷು","options":["षु","पु","शि"],"correctIdx":0,"translit_latn":"","tag":"cv"},{"id":"CV275","level":2,"prompt":"ಷೂ","options":["षू","ती","छा"],"correctIdx":0,"translit_latn":"","tag":"cv"},{"id":"CV276","level":2,"prompt":"ಷೆ","options":["षे","टे","रु"],"correctIdx":0,"translit_latn":"","tag":"cv"},{"id":"CV277","level":2,"prompt":"ಷೇ","options":["षे","सो","डी"],"correctIdx":0,"translit_latn":"","tag":"cv"},{"id":"CV278","level":2,"prompt":"ಷೊ","options":["षो","खि","नो"],"correctIdx":0,"translit_latn":"","tag":"cv"},{"id":"CV279","level":2,"prompt":"ಷೋ","options":["बा","तु","षो"],"correctIdx":2,"translit_latn":"","tag":"cv"},{"id":"CV280","level":2,"prompt":"ಸಾ","options":["सो","धो","सा"],"correctIdx":2,"translit_latn":"","tag":"cv"},{"id":"CV281","level":2,"prompt":"ಸಿ","options":["सि","ली","थे"],"correctIdx":0,"translit_latn":"","tag":"cv"},{"id":"CV282","level":2,"prompt":"ಸೀ","options":["घो","गे","सी"],"correctIdx":2,"translit_latn":"","tag":"cv"},{"id":"CV283","level":2,"prompt":"ಸು","options":["सु","ङे","ज्ञू"],"correctIdx":0,"translit_latn":"","tag":"cv"},{"id":"CV284","level":2,"prompt":"ಸೂ","options":["ज्ञू","जी","सू"],"correctIdx":2,"translit_latn":"","tag":"cv"},{"id":"CV285","level":2,"prompt":"ಸೆ","options":["भे","ज्ञे","से"],"correctIdx":2,"translit_latn":"","tag":"cv"},{"id":"CV286","level":2,"prompt":"ಸೇ","options":["हे","हा","से"],"correctIdx":2,"translit_latn":"","tag":"cv"},{"id":"CV287","level":2,"prompt":"ಸೊ","options":["झे","सो","षो"],"correctIdx":1,"translit_latn":"","tag":"cv"},{"id":"CV288","level":2,"prompt":"ಸೋ","options":["ही","पे","सो"],"correctIdx":2,"translit_latn":"","tag":"cv"},{"id":"CV289","level":2,"prompt":"ಹಾ","options":["हा","ने","हो"],"correctIdx":0,"translit_latn":"","tag":"cv"},{"id":"CV290","level":2,"prompt":"ಹಿ","options":["खे","हि","नो"],"correctIdx":1,"translit_latn":"","tag":"cv"},{"id":"CV291","level":2,"prompt":"ಹೀ","options":["रू","ही","खो"],"correctIdx":1,"translit_latn":"","tag":"cv"},{"id":"CV292","level":2,"prompt":"ಹು","options":["हु","घो","टो"],"correctIdx":0,"translit_latn":"","tag":"cv"},{"id":"CV293","level":2,"prompt":"ಹೂ","options":["गि","ञु","हू"],"correctIdx":2,"translit_latn":"","tag":"cv"},{"id":"CV294","level":2,"prompt":"ಹೆ","options":["री","हे","वे"],"correctIdx":1,"translit_latn":"","tag":"cv"},{"id":"CV295","level":2,"prompt":"ಹೇ","options":["रो","हे","षा"],"correctIdx":1,"translit_latn":"","tag":"cv"},{"id":"CV296","level":2,"prompt":"ಹೊ","options":["हो","ळु","ज्ञे"],"correctIdx":0,"translit_latn":"","tag":"cv"},{"id":"CV297","level":2,"prompt":"ಹೋ","options":["हो","पी","ळे"],"correctIdx":0,"translit_latn":"","tag":"cv"},{"id":"CV298","level":2,"prompt":"ಳಾ","options":["थो","क्षे","ळा"],"correctIdx":2,"translit_latn":"","tag":"cv"},{"id":"CV299","level":2,"prompt":"ಳಿ","options":["ळि","दो","नु"],"correctIdx":0,"translit_latn":"","tag":"cv"},{"id":"CV300","level":2,"prompt":"ಳೀ","options":["ळी","पो","ढो"],"correctIdx":0,"translit_latn":"","tag":"cv"},{"id":"CV301","level":2,"prompt":"ಳು","options":["ळु","क्षे","धि"],"correctIdx":0,"translit_latn":"","tag":"cv"},{"id":"CV302","level":2,"prompt":"ಳೂ","options":["ञू","ळू","गू"],"correctIdx":1,"translit_latn":"","tag":"cv"},{"id":"CV303","level":2,"prompt":"ಳೆ","options":["थो","बो","ळे"],"correctIdx":2,"translit_latn":"","tag":"cv"},{"id":"CV304","level":2,"prompt":"ಳೇ","options":["क्षू","ज्ञू","ळे"],"correctIdx":2,"translit_latn":"","tag":"cv"},{"id":"CV305","level":2,"prompt":"ಳೊ","options":["तु","घो","ळो"],"correctIdx":2,"translit_latn":"","tag":"cv"},{"id":"CV306","level":2,"prompt":"ಳೋ","options":["ळो","रे","घि"],"correctIdx":0,"translit_latn":"","tag":"cv"},{"id":"CV307","level":2,"prompt":"ಕ್ಷಾ","options":["छी","को","क्षा"],"correctIdx":2,"translit_latn":"","tag":"cv"},{"id":"CV308","level":2,"prompt":"ಕ್ಷಿ","options":["क्षि","षो","डू"],"correctIdx":0,"translit_latn":"","tag":"cv"},{"id":"CV309","level":2,"prompt":"ಕ್ಷೀ","options":["घि","क्षी","णो"],"correctIdx":1,"translit_latn":"","tag":"cv"},{"id":"CV310","level":2,"prompt":"ಕ್ಷು","options":["क्षु","ठा","ठे"],"correctIdx":0,"translit_latn":"","tag":"cv"},{"id":"CV311","level":2,"prompt":"ಕ್ಷೂ","options":["गा","क्षू","ठू"],"correctIdx":1,"translit_latn":"","tag":"cv"},{"id":"CV312","level":2,"prompt":"ಕ್ಷೆ","options":["क्षे","फू","शो"],"correctIdx":0,"translit_latn":"","tag":"cv"},{"id":"CV313","level":2,"prompt":"ಕ್ಷೇ","options":["शू","झो","क्षे"],"correctIdx":2,"translit_latn":"","tag":"cv"},{"id":"CV314","level":2,"prompt":"ಕ್ಷೊ","options":["शू","क्षो","फी"],"correctIdx":1,"translit_latn":"","tag":"cv"},{"id":"CV315","level":2,"prompt":"ಕ್ಷೋ","options":["धु","के","क्षो"],"correctIdx":2,"translit_latn":"","tag":"cv"},{"id":"CV316","level":2,"prompt":"ಜ್ಞಾ","options":["पि","ज्ञा","लो"],"correctIdx":1,"translit_latn":"","tag":"cv"},{"id":"CV317","level":2,"prompt":"ಜ್ಞಿ","options":["ठी","षे","ज्ञि"],"correctIdx":2,"translit_latn":"","tag":"cv"},{"id":"CV318","level":2,"prompt":"ಜ್ಞೀ","options":["ज्ञी","थे","तो"],"correctIdx":0,"translit_latn":"","tag":"cv"},{"id":"CV319","level":2,"prompt":"ಜ್ಞು","options":["ना","ज्ञु","थे"],"correctIdx":1,"translit_latn":"","tag":"cv"},{"id":"CV320","level":2,"prompt":"ಜ್ಞೂ","options":["शू","घि","ज्ञू"],"correctIdx":2,"translit_latn":"","tag":"cv"},{"id":"CV321","level":2,"prompt":"ಜ್ಞೆ","options":["हू","ज्ञे","जू"],"correctIdx":1,"translit_latn":"","tag":"cv"},{"id":"CV322","level":2,"prompt":"ಜ್ಞೇ","options":["ज्ञे","णी","षी"],"correctIdx":0,"translit_latn":"","tag":"cv"},{"id":"CV323","level":2,"prompt":"ಜ್ಞೊ","options":["रो","ज्ञो","षो"],"correctIdx":1,"translit_latn":"","tag":"cv"},{"id":"CV324","level":2,"prompt":"ಜ್ಞೋ","options":["ज्ञो","ति","ळो"],"correctIdx":0,"translit_latn":"","tag":"cv"},{"id": "CV325", "level": 2, "prompt": "ಕೈ", "options": ["कौ", "कै", "णै"], "correctIdx": 1, "translit_latn": "", "tag": "cv"},{"id": "CV326", "level": 2, "prompt": "ಕೌ", "options": ["यौ", "कै", "कौ"], "correctIdx": 2, "translit_latn": "", "tag": "cv"},{"id": "CV327", "level": 2, "prompt": "ಖೈ", "options": ["खौ", "तै", "खै"], "correctIdx": 2, "translit_latn": "", "tag": "cv"},{"id": "CV328", "level": 2, "prompt": "ಖೌ", "options": ["खै", "रौ", "खौ"], "correctIdx": 2, "translit_latn": "", "tag": "cv"},{"id": "CV329", "level": 2, "prompt": "ಗೈ", "options": ["गौ", "गै", "थै"], "correctIdx": 1, "translit_latn": "", "tag": "cv"},{"id": "CV330", "level": 2, "prompt": "ಗೌ", "options": ["गौ", "गै", "लौ"], "correctIdx": 0, "translit_latn": "", "tag": "cv"},{"id": "CV331", "level": 2, "prompt": "ಘೈ", "options": ["घौ", "दै", "घै"], "correctIdx": 2, "translit_latn": "", "tag": "cv"},{"id": "CV332", "level": 2, "prompt": "ಘೌ", "options": ["घै", "वौ", "घौ"], "correctIdx": 2, "translit_latn": "", "tag": "cv"},{"id": "CV333", "level": 2, "prompt": "ಚೈ", "options": ["चौ", "धै", "चै"], "correctIdx": 2, "translit_latn": "", "tag": "cv"},{"id": "CV334", "level": 2, "prompt": "ಚೌ", "options": ["चै", "चौ", "शौ"], "correctIdx": 1, "translit_latn": "", "tag": "cv"},{"id": "CV335", "level": 2, "prompt": "ಛೈ", "options": ["छै", "छौ", "नै"], "correctIdx": 0, "translit_latn": "", "tag": "cv"},{"id": "CV336", "level": 2, "prompt": "ಛೌ", "options": ["षौ", "छै", "छौ"], "correctIdx": 2, "translit_latn": "", "tag": "cv"},{"id": "CV337", "level": 2, "prompt": "ಜೈ", "options": ["जै", "जौ", "पै"], "correctIdx": 0, "translit_latn": "", "tag": "cv"},{"id": "CV338", "level": 2, "prompt": "ಜೌ", "options": ["जै", "सौ", "जौ"], "correctIdx": 2, "translit_latn": "", "tag": "cv"},{"id": "CV339", "level": 2, "prompt": "ಟೈ", "options": ["टै", "टौ", "फै"], "correctIdx": 0, "translit_latn": "", "tag": "cv"},{"id": "CV340", "level": 2, "prompt": "ಟೌ", "options": ["टौ", "हौ", "टै"], "correctIdx": 0, "translit_latn": "", "tag": "cv"},{"id": "CV341", "level": 2, "prompt": "ಠೈ", "options": ["ठौ", "बै", "ठै"], "correctIdx": 2, "translit_latn": "", "tag": "cv"},{"id": "CV342", "level": 2, "prompt": "ಠೌ", "options": ["ळौ", "ठौ", "ठै"], "correctIdx": 1, "translit_latn": "", "tag": "cv"},{"id": "CV343", "level": 2, "prompt": "ಡೈ", "options": ["भै", "डौ", "डै"], "correctIdx": 2, "translit_latn": "", "tag": "cv"},{"id": "CV344", "level": 2, "prompt": "ಡೌ", "options": ["क्षौ", "डै", "डौ"], "correctIdx": 2, "translit_latn": "", "tag": "cv"},{"id": "CV345", "level": 2, "prompt": "ಢೈ", "options": ["ढै", "मै", "ढौ"], "correctIdx": 0, "translit_latn": "", "tag": "cv"},{"id": "CV346", "level": 2, "prompt": "ಢೌ", "options": ["ज्ञौ", "ढै", "ढौ"], "correctIdx": 2, "translit_latn": "", "tag": "cv"},{"id": "CV347", "level": 2, "prompt": "ಣೈ", "options": ["णौ", "णै", "यै"], "correctIdx": 1, "translit_latn": "", "tag": "cv"},{"id": "CV348", "level": 2, "prompt": "ಣೌ", "options": ["कौ", "णौ", "णै"], "correctIdx": 1, "translit_latn": "", "tag": "cv"},{"id": "CV349", "level": 2, "prompt": "ತೈ", "options": ["तै", "तौ", "रै"], "correctIdx": 0, "translit_latn": "", "tag": "cv"},{"id": "CV350", "level": 2, "prompt": "ತೌ", "options": ["तौ", "तै", "खौ"], "correctIdx": 0, "translit_latn": "", "tag": "cv"},{"id": "CV351", "level": 2, "prompt": "ಥೈ", "options": ["थौ", "थै", "लै"], "correctIdx": 1, "translit_latn": "", "tag": "cv"},{"id": "CV352", "level": 2, "prompt": "ಥೌ", "options": ["थै", "थौ", "गौ"], "correctIdx": 1, "translit_latn": "", "tag": "cv"},{"id": "CV353", "level": 2, "prompt": "ದೈ", "options": ["दौ", "वै", "दै"], "correctIdx": 2, "translit_latn": "", "tag": "cv"},{"id": "CV354", "level": 2, "prompt": "ದೌ", "options": ["घौ", "दौ", "दै"], "correctIdx": 1, "translit_latn": "", "tag": "cv"},{"id": "CV355", "level": 2, "prompt": "ಧೈ", "options": ["धौ", "शै", "धै"], "correctIdx": 2, "translit_latn": "", "tag": "cv"},{"id": "CV356", "level": 2, "prompt": "ಧೌ", "options": ["धौ", "चौ", "धै"], "correctIdx": 0, "translit_latn": "", "tag": "cv"},{"id": "CV357", "level": 2, "prompt": "ನೈ", "options": ["नै", "षै", "नौ"], "correctIdx": 0, "translit_latn": "", "tag": "cv"},{"id": "CV358", "level": 2, "prompt": "ನೌ", "options": ["छौ", "नै", "नौ"], "correctIdx": 2, "translit_latn": "", "tag": "cv"},{"id": "CV359", "level": 2, "prompt": "ಪೈ", "options": ["सै", "पै", "पौ"], "correctIdx": 1, "translit_latn": "", "tag": "cv"},{"id": "CV360", "level": 2, "prompt": "ಪೌ", "options": ["पौ", "पै", "जौ"], "correctIdx": 0, "translit_latn": "", "tag": "cv"},{"id": "CV361", "level": 2, "prompt": "ಫೈ", "options": ["फौ", "फै", "है"], "correctIdx": 1, "translit_latn": "", "tag": "cv"},{"id": "CV362", "level": 2, "prompt": "ಫೌ", "options": ["फै", "फौ", "टौ"], "correctIdx": 1, "translit_latn": "", "tag": "cv"},{"id": "CV363", "level": 2, "prompt": "ಬೈ", "options": ["बौ", "बै", "ळै"], "correctIdx": 1, "translit_latn": "", "tag": "cv"},{"id": "CV364", "level": 2, "prompt": "ಬೌ", "options": ["ठौ", "बै", "बौ"], "correctIdx": 2, "translit_latn": "", "tag": "cv"},{"id": "CV365", "level": 2, "prompt": "ಭೈ", "options": ["भै", "क्षै", "भौ"], "correctIdx": 0, "translit_latn": "", "tag": "cv"},{"id": "CV366", "level": 2, "prompt": "ಭೌ", "options": ["भै", "भौ", "डौ"], "correctIdx": 1, "translit_latn": "", "tag": "cv"},{"id": "CV367", "level": 2, "prompt": "ಮೈ", "options": ["मै", "मौ", "ज्ञै"], "correctIdx": 0, "translit_latn": "", "tag": "cv"},{"id": "CV368", "level": 2, "prompt": "ಮೌ", "options": ["मै", "ढौ", "मौ"], "correctIdx": 2, "translit_latn": "", "tag": "cv"},{"id": "CV369", "level": 2, "prompt": "ಯೈ", "options": ["कै", "यौ", "यै"], "correctIdx": 2, "translit_latn": "", "tag": "cv"},{"id": "CV370", "level": 2, "prompt": "ಯೌ", "options": ["यौ", "णौ", "यै"], "correctIdx": 0, "translit_latn": "", "tag": "cv"},{"id": "CV371", "level": 2, "prompt": "ರೈ", "options": ["रौ", "खै", "रै"], "correctIdx": 2, "translit_latn": "", "tag": "cv"},{"id": "CV372", "level": 2, "prompt": "ರೌ", "options": ["रौ", "रै", "तौ"], "correctIdx": 0, "translit_latn": "", "tag": "cv"},{"id": "CV373", "level": 2, "prompt": "ಲೈ", "options": ["गै", "लौ", "लै"], "correctIdx": 2, "translit_latn": "", "tag": "cv"},{"id": "CV374", "level": 2, "prompt": "ಲೌ", "options": ["लौ", "थौ", "लै"], "correctIdx": 0, "translit_latn": "", "tag": "cv"},{"id": "CV375", "level": 2, "prompt": "ವೈ", "options": ["घै", "वौ", "वै"], "correctIdx": 2, "translit_latn": "", "tag": "cv"},{"id": "CV376", "level": 2, "prompt": "ವೌ", "options": ["वै", "दौ", "वौ"], "correctIdx": 2, "translit_latn": "", "tag": "cv"},{"id": "CV377", "level": 2, "prompt": "ಶೈ", "options": ["शै", "शौ", "चै"], "correctIdx": 0, "translit_latn": "", "tag": "cv"},{"id": "CV378", "level": 2, "prompt": "ಶೌ", "options": ["शौ", "शै", "धौ"], "correctIdx": 0, "translit_latn": "", "tag": "cv"},{"id": "CV379", "level": 2, "prompt": "ಷೈ", "options": ["षै", "षौ", "छै"], "correctIdx": 0, "translit_latn": "", "tag": "cv"},{"id": "CV380", "level": 2, "prompt": "ಷೌ", "options": ["नौ", "षौ", "षै"], "correctIdx": 1, "translit_latn": "", "tag": "cv"},{"id": "CV381", "level": 2, "prompt": "ಸೈ", "options": ["जै", "सौ", "सै"], "correctIdx": 2, "translit_latn": "", "tag": "cv"},{"id": "CV382", "level": 2, "prompt": "ಸೌ", "options": ["सै", "पौ", "सौ"], "correctIdx": 2, "translit_latn": "", "tag": "cv"},{"id": "CV383", "level": 2, "prompt": "ಹೈ", "options": ["हौ", "टै", "है"], "correctIdx": 2, "translit_latn": "", "tag": "cv"},{"id": "CV384", "level": 2, "prompt": "ಹೌ", "options": ["है", "हौ", "फौ"], "correctIdx": 1, "translit_latn": "", "tag": "cv"},{"id": "CV385", "level": 2, "prompt": "ಳೈ", "options": ["ळै", "ळौ", "ठै"], "correctIdx": 0, "translit_latn": "", "tag": "cv"},{"id": "CV386", "level": 2, "prompt": "ಳೌ", "options": ["ळै", "ळौ", "बौ"], "correctIdx": 1, "translit_latn": "", "tag": "cv"},{"id": "CV387", "level": 2, "prompt": "ಕ್ಷೈ", "options": ["क्षै", "डै", "क्षौ"], "correctIdx": 0, "translit_latn": "", "tag": "cv"},{"id": "CV388", "level": 2, "prompt": "ಕ್ಷೌ", "options": ["क्षौ", "क्षै", "भौ"], "correctIdx": 0, "translit_latn": "", "tag": "cv"},{"id": "CV389", "level": 2, "prompt": "ಜ್ಞೈ", "options": ["ज्ञै", "ज्ञौ", "ढै"], "correctIdx": 0, "translit_latn": "", "tag": "cv"},{"id": "CV390", "level": 2, "prompt": "ಜ್ಞೌ", "options": ["ज्ञै", "ज्ञौ", "मौ"], "correctIdx": 1, "translit_latn": "", "tag": "cv"},{"id":"M001","level":2,"prompt":"ಕ","options":["का","कै","क"],"correctIdx":2,"translit_latn":"","tag":"matra-single-base"},{"id":"M002","level":2,"prompt":"ಕಾ","options":["का","की","को"],"correctIdx":0,"translit_latn":"","tag":"matra-single-base"},{"id":"M003","level":2,"prompt":"ಕಿ","options":["को","कू","कि"],"correctIdx":2,"translit_latn":"","tag":"matra-single-base"},{"id":"M004","level":2,"prompt":"ಕೀ","options":["कृ","की","कौ"],"correctIdx":1,"translit_latn":"","tag":"matra-single-base"},{"id":"M005","level":2,"prompt":"ಕು","options":["कै","कु","की"],"correctIdx":1,"translit_latn":"","tag":"matra-single-base"},{"id":"M006","level":2,"prompt":"ಕೂ","options":["कू","कौ","कृ"],"correctIdx":0,"translit_latn":"","tag":"matra-single-base"},{"id":"M008","level":2,"prompt":"ಕೆ","options":["कौ","कू","के"],"correctIdx":2,"translit_latn":"","tag":"matra-single-base"},{"id":"M009","level":2,"prompt":"ಕೇ","options":["की","क","के"],"correctIdx":2,"translit_latn":"","tag":"matra-single-base"},{"id":"M010","level":2,"prompt":"ಕೈ","options":["का","कै","क"],"correctIdx":1,"translit_latn":"","tag":"matra-single-base"},{"id":"M011","level":2,"prompt":"ಕೊ","options":["को","क","कै"],"correctIdx":0,"translit_latn":"","tag":"matra-single-base"},{"id":"M012","level":2,"prompt":"ಕೋ","options":["को","कौ","का"],"correctIdx":0,"translit_latn":"","tag":"matra-single-base"},{"id":"M013","level":2,"prompt":"ಕೌ","options":["कु","को","कौ"],"correctIdx":2,"translit_latn":"","tag":"matra-single-base"}];
+    let deckRaw = [...EMBEDDED_DECK];
+    let currentDeckName = 'embedded master deck';
+
+
+
+    // ---------- Parser ----------
+    function parseTable(text){
+      const t = text.replace(/\r?\n/g, '\n'); // normalize CRLF
+      const firstLine = t.split('\n')[0] || '';
+      const delimiter = (firstLine.split('\t').length > firstLine.split(',').length) ? '\t' : ',';
+      const lines = t.split('\n').filter(l=> l.trim()!=='');
+      if(!lines.length) return [];
+      const header = splitRow(lines[0], delimiter).map(h=>h.trim());
+      const out = [];
+      for(let i=1;i<lines.length;i++){
+        const cells = splitRow(lines[i], delimiter);
+        if(cells.every(c=> String(c).trim()==='')) continue;
+        const obj = {};
+        header.forEach((h, idx)=> obj[h] = (cells[idx]!==undefined ? String(cells[idx]).trim() : ''));
+        obj.__line = i+1; // keep original line number (1-based)
+        out.push(obj);
+      }
+      return out;
+    }
+
+    function splitRow(line, delimiter){
+      const isTab = delimiter==='\t';
+      const res = []; let cell=''; let inQ=false;
+      for(let i=0;i<line.length;i++){
+        const ch = line[i];
+        if(ch==='"'){
+          if(inQ && line[i+1]==='"'){ cell+='"'; i++; continue; }
+          inQ = !inQ; continue;
+        }
+        if(!inQ && ((isTab && ch==='\t') || (!isTab && ch===','))){ res.push(cell); cell=''; continue; }
+        cell += ch;
+      }
+      res.push(cell);
+      return res;
+    }
+
+    function validateRows(rows, headerLine=1){
+      const valid=[], invalid=[];
+      for(const r of rows){
+        const line = r.__line ?? headerLine+1;
+        const prompt = (r.prompt||'').trim();
+        const levelNum = Number(r.level||1);
+        const options = String(r.options||'').split('|').map(s=>s.trim()).filter(Boolean);
+        const idx = Number(r.correct_idx);
+        if(!prompt){ invalid.push({ line, reason: 'missing prompt' }); continue; }
+        if(!options || options.length<2){ invalid.push({ line, reason: 'need at least 2 options' }); continue; }
+        if(Number.isNaN(idx)){ invalid.push({ line, reason: 'correct_idx missing/NaN' }); continue; }
+        if(idx<0 || idx>=options.length){ invalid.push({ line, reason: 'correct_idx out of range' }); continue; }
+        valid.push({
+          id: r.id || (self.crypto && crypto.randomUUID ? crypto.randomUUID() : ('id_'+Math.random().toString(36).slice(2))),
+          level: levelNum,
+          prompt,
+          options,
+          correctIdx: idx,
+          translit_latn: r.translit_latn||'',
+          tag: r.tag||''
+        });
+      }
+      return { valid, invalid };
+    }
+
+
+
+    // ---------- Scheduler (Leitner‑lite) ----------
+    function createScheduler(items){
+      const recs = items.map(r=>({ id:r.id, row:r, box:1, nextDue:0 }));
+      let step = 0;
+      const byId = new Map(recs.map(r=>[r.id, r]));
+      function pickDue(){
+        const due = recs.filter(x=>x.nextDue<=step);
+        if(due.length===0){
+          const minNext = Math.min(...recs.map(x=>x.nextDue));
+          step = Math.max(step+1, minNext);
+          return pickDue();
+        }
+        return due[Math.floor(Math.random()*due.length)];
+      }
+      return {
+        step: ()=>step,
+        next(){ step++; const rec = pickDue(); return rec.row; },
+        record(id, correct){
+          const rec = byId.get(id); if(!rec) return;
+          if(correct){ rec.box = Math.min(3, rec.box+1); }
+          else { rec.box = 1; }
+          rec.nextDue = step + rec.box;
+        }
+      };
+    }
+
+    // ---------- Session Engine ----------
+    const timerRing = document.getElementById('timer-ring');
+    const elPrompt  = document.getElementById('prompt');
+    const elCardIndex = document.getElementById('card-index');
+    const elCardTotal = document.getElementById('card-total');
+    const elScore = document.getElementById('score');
+    const optionsBox = document.getElementById('options-box');
+
+    // Centralized DOM map (for documentation/reference)
+    const DOM = { screens, timerRing, elPrompt, elCardIndex, elCardTotal, elScore, optionsBox };
+
+    let session = null; let tHandle = null; let lastStartTs = 0; let isLocked = false; let sessionAlive = false; const MAX_LIST = 50;
+
+    function getBaseConsonant(prompt){
+      return Array.from(String(prompt||'').trim())[0] || '';
+    }
+
+    function getMatraKey(prompt){
+      return Array.from(String(prompt||'').trim()).slice(1).join('');
+    }
+
+    function getCorrectAnswer(row){
+      return row.options?.[row.correctIdx] ?? '';
+    }
+
+    function uniqueStrings(arr){
+      const seen = new Set();
+      const out = [];
+      for(const item of arr){
+        const val = String(item ?? '').trim();
+        if(!val || seen.has(val)) continue;
+        seen.add(val);
+        out.push(val);
+      }
+      return out;
+    }
+
+    function sampleShuffled(arr, n){
+      return shuffle([...arr]).slice(0, Math.max(0, n));
+    }
+
+    function buildBaseGroups(rows){
+      const map = new Map();
+      rows.forEach(r=>{
+        const base = getBaseConsonant(r.prompt);
+        if(!base) return;
+        if(!map.has(base)) map.set(base, []);
+        map.get(base).push(r);
+      });
+      return map;
+    }
+
+    function buildMatraGroups(rows){
+      const map = new Map();
+      rows.forEach(r=>{
+        const key = getMatraKey(r.prompt);
+        if(!map.has(key)) map.set(key, []);
+        map.get(key).push(r);
+      });
+      return map;
+    }
+
+    function buildCard(row, pool, distractorMode='same-base'){
+      const correct = getCorrectAnswer(row);
+      const optionCount = Math.max(3, row.options?.length || 3);
+      if(distractorMode === 'classic'){
+        const options = uniqueStrings([...(row.options||[])]);
+        const correctIdx = options.indexOf(correct);
+        return { row, prompt: row.prompt, options, correctIdx: Math.max(0, correctIdx) };
+      }
+
+      const base = getBaseConsonant(row.prompt);
+      const sameBaseRows = pool.filter(r => r.id !== row.id && getBaseConsonant(r.prompt) === base);
+      const sameBaseAnswers = uniqueStrings(sameBaseRows.map(getCorrectAnswer).filter(a => a !== correct));
+
+      const originalWrong = uniqueStrings((row.options||[]).filter((opt, idx)=> idx !== row.correctIdx));
+      const poolWrong = uniqueStrings(pool.filter(r=>r.id !== row.id).map(getCorrectAnswer).filter(a => a !== correct));
+
+      let distractors = [];
+      distractors.push(...sampleShuffled(sameBaseAnswers, Math.min(optionCount - 1, sameBaseAnswers.length)));
+
+      if(distractors.length < optionCount - 1){
+        const needed = optionCount - 1 - distractors.length;
+        const originalFill = originalWrong.filter(opt => !distractors.includes(opt) && opt !== correct);
+        distractors.push(...sampleShuffled(originalFill, needed));
+      }
+
+      if(distractors.length < optionCount - 1){
+        const needed = optionCount - 1 - distractors.length;
+        const poolFill = poolWrong.filter(opt => !distractors.includes(opt) && opt !== correct);
+        distractors.push(...sampleShuffled(poolFill, needed));
+      }
+
+      distractors = uniqueStrings(distractors).slice(0, optionCount - 1);
+      const options = shuffle(uniqueStrings([correct, ...distractors]));
+      const correctIdx = options.indexOf(correct);
+      return { row, prompt: row.prompt, options, correctIdx };
+    }
+
+    function startSession({ fromMistakesOnly=false, weakOnly=false, minAttempts=WEAK_DEFAULTS.minAttempts, threshold=WEAK_DEFAULTS.threshold } = {}){ sessionAlive = true;
+      const s = Settings.save();
+      const progress = ProgressStore.get();
+      let pool = deckRaw.filter(r=> String(r.level)==='2');
+      if(fromMistakesOnly && session && session.mistakes.length){ pool = session.mistakes.map(m=>m.row); }
+      if(weakOnly){
+        pool = pool.filter(r=> isWeak(r, progress, minAttempts, threshold));
+        if(pool.length===0){
+          alert(`No weak matras found yet. Criteria: attempts ≥ ${minAttempts} AND accuracy < ${Math.round(threshold*100)}%. Keep practicing normally for a few sessions first.`);
+          return;
+        }
+      }
+      if(pool.length===0){ alert('No matras cards found in the loaded deck. Load CSV or use the sample.'); return; }
+
+      let sessionLabel = 'Mixed deck';
+      let chosenBase = '';
+      let chosenMatra = '';
+
+      if(!fromMistakesOnly && !weakOnly && s.sessionMode === 'family'){
+        const baseGroups = buildBaseGroups(pool);
+        const candidateBases = Array.from(baseGroups.keys()).filter(base => (baseGroups.get(base)||[]).length >= 3);
+        if(candidateBases.length){
+          chosenBase = candidateBases[Math.floor(Math.random()*candidateBases.length)];
+          pool = [...(baseGroups.get(chosenBase) || [])];
+          sessionLabel = `Consonant drill: ${chosenBase}`;
+        }
+      } else if(!fromMistakesOnly && !weakOnly && s.sessionMode === 'matra'){
+        const matraGroups = buildMatraGroups(pool);
+        const candidateMatras = Array.from(matraGroups.keys()).filter(key => (matraGroups.get(key)||[]).length >= 3);
+        if(candidateMatras.length){
+          chosenMatra = candidateMatras[Math.floor(Math.random()*candidateMatras.length)];
+          pool = [...(matraGroups.get(chosenMatra) || [])];
+          sessionLabel = `Matra drill: ${chosenMatra || 'no sign'}`;
+        }
+      } else if(fromMistakesOnly){
+        sessionLabel = 'Retry mistakes';
+      } else if(weakOnly){
+        sessionLabel = 'Weak matras';
+      }
+
+      const requestedCount = Math.max(1, Number(s.cardsCount)||20);
+      const effectiveCount = Math.min(requestedCount, pool.length);
+      const queue = shuffle([...pool]).slice(0, effectiveCount);
+
+      session = { idx:0, total:queue.length, score:0, mistakes:[], times:[], timerSec:Number(s.timerSec)||5, current:null, level:s.level, pool:[...pool], queue, distractorMode:s.distractorMode || 'same-base', sessionMode:s.sessionMode || 'mixed', chosenBase, chosenMatra, label:sessionLabel };
+      elCardTotal.textContent = String(session.total);
+      elScore.textContent = '0';
+      const labelEl = document.getElementById('session-label');
+      if(labelEl){
+        const distractorText = session.distractorMode === 'same-base' ? 'harder same-family options' : 'classic options';
+        labelEl.textContent = `${sessionLabel} • ${distractorText}`;
+      }
+      show('play');
+      renderNext();
+    }
+
+    function renderNext(){
+      if(session.idx >= session.total){ endSession(); return; }
+      const progressBar = document.getElementById('progress-bar');
+      if(progressBar) progressBar.style.width = Math.round((session.idx / session.total) * 100) + '%';
+      const row = session.queue[session.idx];
+      const card = buildCard(row, session.pool, session.distractorMode);
+      session.current = card;
+      renderCard(card);
+      runTimer();
+    }
+
+    function renderCard(card){
+      elPrompt.textContent = card.prompt;
+      elPrompt.classList.add('kn');
+      optionsBox.innerHTML='';
+      card.options.forEach((opt, i)=>{
+        const btn = document.createElement('button');
+        btn.className = 'w-full text-left px-4 py-3 rounded-xl border border-slate-200 hover:bg-slate-50 flex items-center gap-3 focus:outline-none focus:ring-2 focus:ring-slate-300 transition-colors transition-opacity duration-300';
+        btn.dataset.index = i;
+        btn.innerHTML = `<span class="optnum text-slate-400 w-6">${i+1}</span><span class="text-lg">${escapeHtml(opt)}</span>`;
+        btn.addEventListener('click', ()=> choose(i));
+        optionsBox.appendChild(btn);
+      });
+      elCardIndex.textContent = String(session.idx+1);
+      setTimerLabel(session.timerSec);
+      lastStartTs = performance.now();
+    }
+
+    function choose(i){
+      if(isLocked) return; isLocked = true;
+      stopTimer();
+      const card = session.current;
+      const row = card.row;
+      const elapsed = Math.max(0, (performance.now()-lastStartTs)/1000);
+      session.times.push(elapsed);
+      const correct = (i===card.correctIdx);
+      // Update persistent per-item stats (attempts/correct + confusion)
+      recordAttempt(row, correct, card.options[i]);
+      const buttons = qsa('button', optionsBox);
+      buttons.forEach((b)=> b.classList.add('pointer-events-none'));
+
+      if(correct){
+        buttons.forEach((b, idx)=>{
+          const num = b.querySelector('.optnum');
+          if(idx===card.correctIdx){
+            b.classList.remove('border-slate-200');
+            b.classList.add('bg-green-500','text-white','border-green-600');
+            if(num) num.classList.add('text-white');
+          } else {
+            b.classList.add('opacity-0');
+            setTimeout(()=>{ b.classList.add('hidden'); }, 200);
+          }
+        });
+        session.score += 1; elScore.textContent = String(session.score);
+        setTimeout(()=>{ isLocked=false; session.idx++; renderNext(); }, 1200);
+      } else {
+        buttons.forEach((b, idx)=>{
+          const num = b.querySelector('.optnum');
+          if(idx===card.correctIdx){
+            b.classList.remove('border-slate-200');
+            b.classList.add('bg-green-500','text-white','border-green-600');
+            if(num) num.classList.add('text-white');
+          }
+          if(idx===i){
+            b.classList.remove('border-slate-200');
+            b.classList.add('bg-rose-500','text-white','border-rose-600');
+            if(num) num.classList.add('text-white');
+          }
+          if(idx!==card.correctIdx && idx!==i){ b.classList.add('opacity-60'); }
+        });
+        session.mistakes.push({ row, chosen: card.options[i], correct: card.options[card.correctIdx] });
+        setTimeout(()=>{ isLocked=false; session.idx++; renderNext(); }, 1000);
+      }
+    }
+
+    // ---------- Timer ----------
+    function setTimerLabel(s){ timerRing.setAttribute('data-time', s+ 's'); }
+    function runTimer(){
+      stopTimer(); setTimerLabel(session.timerSec);
+      tHandle = setInterval(()=>{
+        const label = timerRing.getAttribute('data-time');
+        const left = Number(label?.replace('s',''))||0;
+        const next = Math.max(0, left-1);
+        setTimerLabel(next);
+        if(next<=0){ stopTimer(); chooseTimeout(); }
+      }, 1000);
+    }
+    function stopTimer(){ if(tHandle){ clearInterval(tHandle); tHandle=null; } }
+    function chooseTimeout(){
+      if(isLocked) return; isLocked = true;
+      const card = session.current;
+      const row = card.row;
+      session.times.push(session.timerSec);
+      // Timeout counts as an attempt and a miss
+      recordAttempt(row, false, '⏳');
+      session.mistakes.push({ row, chosen: '⏳', correct: card.options[card.correctIdx] });
+      const buttons = qsa('button', optionsBox);
+      buttons.forEach((b)=> b.classList.add('pointer-events-none'));
+      buttons.forEach((b, idx)=>{
+        const num = b.querySelector('.optnum');
+        if(idx===card.correctIdx){
+          b.classList.remove('border-slate-200');
+          b.classList.add('bg-green-500','text-white','border-green-600');
+          if(num) num.classList.add('text-white');
+        } else { b.classList.add('opacity-60'); }
+      });
+      setTimeout(()=>{ isLocked=false; session.idx++; renderNext(); }, 1100);
+    }
+
+    // ---------- Results & History ----------
+    function endSession(){ sessionAlive = false;
+      stopTimer();
+      const total = session.total; const correct = session.score; const acc = total ? Math.round((correct/total)*100) : 0;
+      const avg = session.times.length ? (session.times.reduce((a,b)=>a+b,0)/session.times.length) : 0;
+      const fastest = session.times.length ? Math.min(...session.times) : 0;
+      const slowest = session.times.length ? Math.max(...session.times) : 0;
+      qs('#stat-acc').innerHTML = `${acc}% <span class="text-slate-400 text-base">(${correct}/${total})</span>`;
+      qs('#stat-avg').textContent = avg ? `${avg.toFixed(1)} s` : '—';
+      qs('#stat-range').textContent = (fastest && slowest) ? `${fastest.toFixed(1)} s / ${slowest.toFixed(1)} s` : '—';
+      const wrongUL = document.getElementById('wrong-list'); wrongUL.innerHTML = '';
+      session.mistakes.slice(0,50).forEach(m=>{
+        const li = document.createElement('li'); li.className = 'flex items-center gap-2';
+        li.innerHTML = `<span class="kn text-xl">${escapeHtml(m.row.prompt)}</span><span>→</span><span class="text-base">${escapeHtml(m.correct)}</span><span class="text-slate-500">(you chose</span><span class="text-base">${escapeHtml(String(m.chosen))}</span><span class="text-slate-500">)</span>`;
+        wrongUL.appendChild(li);
+      });
+
+      // Save to history (keep last 10)
+      const history = HistoryStore.read();
+      history.unshift({
+        ts: new Date().toISOString(),
+        deck: currentDeckName,
+        level: 2,
+        total,
+        correct,
+        acc,
+        avg: Number(avg.toFixed(2)),
+        mode: session.label,
+        distractorMode: session.distractorMode,
+        wrong: session.mistakes.slice(0,10).map(m=>({ prompt:m.row.prompt, correct:m.correct }))
+      });
+      HistoryStore.write(history);
+      renderQuickStats();
+      show('results');
+    }
+
+    function renderQuickStats(){
+      const history = HistoryStore.read();
+      const progress = ProgressStore.get();
+      const totalSessions = history.length;
+      const avgAcc = totalSessions > 0
+        ? Math.round(history.reduce((s, h) => s + h.acc, 0) / totalSessions)
+        : 0;
+      // Streak: consecutive 100% sessions from most recent
+      let streak = 0;
+      for(const h of history){ if(h.acc === 100) streak++; else break; }
+      const lastInfo = totalSessions > 0
+        ? `Last session: ${history[0].correct}/${history[0].total}`
+        : '';
+      const statsEl = document.getElementById('quick-stats');
+      if(statsEl) statsEl.innerHTML = `
+        <div class="bg-slate-100 rounded-xl p-4">
+          <div class="text-2xl font-bold">${totalSessions}</div>
+          <div class="text-sm text-slate-600">Sessions</div>
+        </div>
+        <div class="bg-slate-100 rounded-xl p-4">
+          <div class="text-2xl font-bold">${avgAcc}%</div>
+          <div class="text-sm text-slate-600">Avg Accuracy</div>
+        </div>
+        <div class="bg-slate-100 rounded-xl p-4">
+          <div class="text-2xl font-bold">${streak}</div>
+          <div class="text-sm text-slate-600">Streak</div>
+        </div>`;
+      const infoEl = document.getElementById('last-session-info');
+      if(infoEl) infoEl.textContent = lastInfo;
+    }
+    // ---------- History UI ----------
+    const historyPanel = document.getElementById('history-panel');
+    const historyList = document.getElementById('history-list');
+    document.getElementById('btn-toggle-history')?.addEventListener('click', ()=>{
+      const btn = document.getElementById('btn-toggle-history');
+      if(historyPanel?.classList.contains('hidden')){
+        renderHistory();
+        historyPanel.classList.remove('hidden');
+        if(btn) btn.textContent = 'Hide History';
+      } else {
+        historyPanel?.classList.add('hidden');
+        if(btn) btn.textContent = 'Show History';
+      }
+    });
+    document.getElementById('btn-clear-history')?.addEventListener('click', ()=>{ HistoryStore.clear(); renderHistory(); });
+
+    function renderHistory(){
+      if(!historyList) return;
+      const data = HistoryStore.read();
+      historyList.innerHTML = '';
+      if(!data.length){
+        const li = document.createElement('li');
+        li.className = 'py-2 text-slate-500';
+        li.textContent = 'No runs yet.';
+        historyList.appendChild(li);
+        return;
+      }
+      data.slice(0,10).forEach(item=>{
+        const li = document.createElement('li');
+        li.className = 'py-2 flex flex-col gap-1';
+        const dt = new Date(item.ts);
+        const title = `${dt.toLocaleDateString()} ${dt.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})} • ${item.deck}`;
+        li.innerHTML = `
+          <div class="flex items-center justify-between">
+            <div class="font-medium text-slate-700 text-sm">${escapeHtml(title)}</div>
+            <div class="text-xs text-slate-500">Matras</div>
+          </div>
+          <div class="text-xs text-slate-600">${item.correct}/${item.total} correct • ${item.acc}% • avg ${item.avg}s${item.mode ? ` • ${escapeHtml(item.mode)}` : ''}</div>
+          ${item.wrong && item.wrong.length ? `<div class="text-xs text-slate-500">Wrong: ${item.wrong.map(w=>`${escapeHtml(w.prompt)}→${escapeHtml(w.correct)}`).join(', ')}</div>` : ''}
+        `;
+        historyList.appendChild(li);
+      });
+    }
+
+    // ---------- Shortcuts ----------
+    document.addEventListener('keydown', (e)=>{
+      if(!screens.play?.classList.contains('active')) return;
+      if(['1','2','3','4'].includes(e.key)){
+        const idx = Number(e.key)-1; const card = session.current; if(card && card.options[idx]!==undefined) choose(idx);
+      } else if(e.key===' '){ e.preventDefault(); stopTimer(); chooseTimeout(); }
+      else if(e.key==='Escape'){ stopTimer(); }
+    });
+
+    // ---------- Utils ----------
+    function shuffle(a){ for(let i=a.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [a[i],a[j]]=[a[j],a[i]]; } return a; }
+    function escapeHtml(s){ return String(s).replace(/[&<>"']/g, c=> ({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[c])); }
+
+    // ---------- Wire up ----------
+    document.getElementById('btn-start')?.addEventListener('click', ()=>{ startSession(); });
+
+    document.getElementById('btn-weak')?.addEventListener('click', ()=>{ startSession({ weakOnly:true }); });
+
+
+    document.getElementById('btn-newrun')?.addEventListener('click', ()=> show('home'));
+    document.getElementById('btn-retry-mistakes')?.addEventListener('click', ()=> startSession({ fromMistakesOnly:true }));
+
+    // Init
+    Settings.load();
+    renderHistory();
+    renderQuickStats();
+
+})();
+  </script>
+</body>
+</html>
