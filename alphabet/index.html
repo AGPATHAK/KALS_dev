@@ -386,9 +386,17 @@ mistakes=[];
 document.getElementById("cardTotal").textContent=cards.length;
 document.getElementById("score").textContent=0;
 
+// ── KJT: start of session ──────────────────────────────────────────────────
+KJT.startSession();
+// ──────────────────────────────────────────────────────────────────────────
+
 show("play");
 nextCard();
 };
+
+// ── KJT: capture card shown time ──────────────────────────────────────────
+let _kjtCardShownAt = 0;
+// ─────────────────────────────────────────────────────────────────────────
 
 function nextCard(){
 if(session.index>=session.cards.length){
@@ -417,6 +425,10 @@ btn.textContent=opt;
 btn.onclick=()=>selectOption(opt);
 box.appendChild(btn);
 });
+
+// ── KJT: record when this card was shown ──────────────────────────────────
+_kjtCardShownAt = performance.now();
+// ─────────────────────────────────────────────────────────────────────────
 }
 
 function selectOption(value){
@@ -426,6 +438,23 @@ const correct=card.dev;
 const buttons=document.querySelectorAll("#options button");
 
 const isCorrect = value === correct;
+
+// ── KJT: record attempt ───────────────────────────────────────────────────
+const allOptions = Array.from(buttons).map(b => b.textContent);
+KJT.recordAttempt({
+  item_id:        'alpha.' + card.kn,
+  item_type:      'akshara',
+  shown_value:    card.kn,
+  correct_answer: correct,
+  user_answer:    value,
+  choices_presented: allOptions,
+  result:         isCorrect ? 'pass' : 'fail',
+  response_time_ms: Math.round(performance.now() - _kjtCardShownAt),
+  distractor_mode: null,
+  difficulty:     null
+});
+// ─────────────────────────────────────────────────────────────────────────
+
 buttons.forEach(b=>{
   b.disabled=true;
   if(b.textContent===correct)
@@ -471,6 +500,25 @@ t--;
 document.getElementById("timerRing").setAttribute("data-time",t+"s");
 if(t<=0){
 clearInterval(timerHandle);
+
+// ── KJT: timeout = fail with no user answer ───────────────────────────────
+const card=session.cards[session.index];
+const buttons=document.querySelectorAll("#options button");
+const allOptions = Array.from(buttons).map(b => b.textContent);
+KJT.recordAttempt({
+  item_id:        'alpha.' + card.kn,
+  item_type:      'akshara',
+  shown_value:    card.kn,
+  correct_answer: card.dev,
+  user_answer:    null,
+  choices_presented: allOptions,
+  result:         'fail',
+  response_time_ms: Math.round(session.timer * 1000),
+  distractor_mode: null,
+  difficulty:     null
+});
+// ─────────────────────────────────────────────────────────────────────────
+
 mistakes.push(session.cards[session.index]);
 session.index++;
 nextCard();
@@ -649,6 +697,126 @@ document.getElementById("resetLetterStatsBtn").onclick=()=>{
   }
 };
 renderDashboard();
+
+
+/* =================================================================================
+   KJT TELEMETRY MODULE v1.0
+   Shared across all KALS apps. Drop this block in unchanged.
+   Writes to localStorage key: kjt_events (append-only JSON array)
+   Schema version: 1.0 (matches KALS Project Charter v1.1)
+   ================================================================================= */
+const KJT = (() => {
+
+  const STORAGE_KEY  = 'kjt_events';
+  const APP          = 'alphabet';
+  const APP_VERSION  = '1.0';
+  const INACTIVITY_MS = 20 * 60 * 1000; // 20 minutes
+
+  let _sessionId      = null;
+  let _inactivityTimer = null;
+
+  // ── Utilities ──────────────────────────────────────────────────────────────
+
+  function _uuid() {
+    // Prefer crypto.randomUUID if available, fall back to math random
+    if (typeof crypto !== 'undefined' && crypto.randomUUID) {
+      return crypto.randomUUID();
+    }
+    return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, c => {
+      const r = Math.random() * 16 | 0;
+      return (c === 'x' ? r : (r & 0x3 | 0x8)).toString(16);
+    });
+  }
+
+  function _isoNow() {
+    return new Date().toISOString();
+  }
+
+  function _readEvents() {
+    try {
+      return JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
+    } catch {
+      return [];
+    }
+  }
+
+  function _writeEvents(events) {
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(events));
+    } catch (e) {
+      console.warn('[KJT] localStorage write failed:', e);
+    }
+  }
+
+  // ── Inactivity reset ───────────────────────────────────────────────────────
+  // If 20 mins pass with no attempt, the session is considered ended.
+  // On next attempt, a new session_id is generated automatically.
+
+  function _resetInactivityTimer() {
+    if (_inactivityTimer) clearTimeout(_inactivityTimer);
+    _inactivityTimer = setTimeout(() => {
+      console.info('[KJT] Session ended due to inactivity.');
+      _sessionId = null;
+    }, INACTIVITY_MS);
+  }
+
+  // ── Public API ─────────────────────────────────────────────────────────────
+
+  function startSession() {
+    // Generate fresh session_id on explicit session start.
+    // sessionStorage ensures tab close = new session.
+    _sessionId = _uuid();
+    try {
+      sessionStorage.setItem('kjt_session_id', _sessionId);
+    } catch {}
+    _resetInactivityTimer();
+    console.info('[KJT] Session started:', _sessionId);
+  }
+
+  function recordAttempt(fields) {
+    // If no active session (e.g. inactivity expired), start a new one silently.
+    if (!_sessionId) {
+      startSession();
+    }
+    _resetInactivityTimer();
+
+    const event = {
+      session_id:         _sessionId,
+      app:                APP,
+      app_version:        APP_VERSION,
+      item_id:            fields.item_id,
+      item_type:          fields.item_type,
+      shown_value:        fields.shown_value,
+      correct_answer:     fields.correct_answer,
+      user_answer:        fields.user_answer        ?? null,
+      choices_presented:  fields.choices_presented  ?? null,
+      result:             fields.result,
+      response_time_ms:   fields.response_time_ms,
+      timestamp:          _isoNow(),
+      mode:               'recognition',
+      distractor_mode:    fields.distractor_mode    ?? null,
+      difficulty:         fields.difficulty         ?? null,
+      intervention_id:    fields.intervention_id    ?? null,
+    };
+
+    const events = _readEvents();
+    events.push(event);
+    _writeEvents(events);
+  }
+
+  function getEvents() {
+    return _readEvents();
+  }
+
+  function clearEvents() {
+    localStorage.removeItem(STORAGE_KEY);
+  }
+
+  return { startSession, recordAttempt, getEvents, clearEvents };
+
+})();
+/* ================= END KJT TELEMETRY MODULE ================= */
+
 
 </script>
 </body>
