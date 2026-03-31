@@ -54,6 +54,12 @@ def build_parser() -> argparse.ArgumentParser:
         default=10,
         help="How many recent item recency rows to print.",
     )
+    parser.add_argument(
+        "--review-limit",
+        type=int,
+        default=10,
+        help="How many prioritized review candidates to print.",
+    )
     return parser
 
 
@@ -152,6 +158,24 @@ def main() -> int:
             """,
             [args.recency_limit],
         ).fetchall()
+
+        review_candidates = conn.execute(
+            """
+            SELECT
+              app,
+              item_id,
+              shown_value,
+              fails,
+              latest_result,
+              first_fails,
+              lifetime_accuracy_pct,
+              review_priority_score
+            FROM prioritized_review_candidates
+            ORDER BY review_priority_score DESC, app ASC, item_id ASC
+            LIMIT ?
+            """,
+            [args.review_limit],
+        ).fetchall()
     finally:
         conn.close()
 
@@ -184,6 +208,11 @@ def main() -> int:
         "Item Recency",
         ["app", "item_id", "shown_value", "attempts", "latest_result", "minutes_since_last_seen", "lifetime_accuracy_pct"],
         recency_rows,
+    )
+    print_table(
+        "Prioritized Review Candidates",
+        ["app", "item_id", "shown_value", "fails", "latest_result", "first_fails", "lifetime_accuracy_pct", "review_priority_score"],
+        review_candidates,
     )
     return 0
 

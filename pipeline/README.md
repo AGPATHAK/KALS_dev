@@ -52,6 +52,7 @@ This prints:
 - confusion pairs
 - first-pass accuracy by item
 - item recency summaries
+- prioritized review candidates
 
 ## Notes
 

@@ -107,3 +107,42 @@ SELECT
   ROUND(100.0 * SUM(CASE WHEN result = 'pass' THEN 1 ELSE 0 END) / COUNT(*), 1) AS lifetime_accuracy_pct
 FROM raw_attempt_events
 GROUP BY app, item_id, item_type;
+
+CREATE OR REPLACE VIEW prioritized_review_candidates AS
+SELECT
+  r.app,
+  r.item_id,
+  r.item_type,
+  r.shown_value,
+  r.attempts,
+  w.fails,
+  r.latest_result,
+  r.minutes_since_last_seen,
+  r.lifetime_accuracy_pct,
+  COALESCE(f.first_attempt_sessions, 0) AS first_attempt_sessions,
+  COALESCE(f.first_fails, 0) AS first_fails,
+  COALESCE(f.first_pass_accuracy_pct, 100.0) AS first_pass_accuracy_pct,
+  ROUND(
+      (COALESCE(w.fails, 0) * 4.0)
+    + (CASE WHEN r.latest_result = 'fail' THEN 3.0 ELSE 0.0 END)
+    + (COALESCE(f.first_fails, 0) * 2.0)
+    + ((100.0 - r.lifetime_accuracy_pct) / 25.0)
+    + ((100.0 - COALESCE(f.first_pass_accuracy_pct, 100.0)) / 40.0)
+    + (CASE
+        WHEN r.minutes_since_last_seen >= 1440 THEN 2.0
+        WHEN r.minutes_since_last_seen >= 60 THEN 1.0
+        WHEN r.minutes_since_last_seen >= 10 THEN 0.5
+        ELSE 0.0
+      END)
+    + (CASE WHEN r.attempts >= 2 THEN 0.5 ELSE 0.0 END)
+  , 2) AS review_priority_score
+FROM item_recency r
+LEFT JOIN weak_items w
+  ON r.app = w.app
+ AND r.item_id = w.item_id
+LEFT JOIN first_pass_accuracy f
+  ON r.app = f.app
+ AND r.item_id = f.item_id
+WHERE COALESCE(w.fails, 0) > 0
+   OR COALESCE(f.first_fails, 0) > 0
+   OR r.latest_result = 'fail';
