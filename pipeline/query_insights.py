@@ -60,6 +60,12 @@ def build_parser() -> argparse.ArgumentParser:
         default=10,
         help="How many prioritized review candidates to print.",
     )
+    parser.add_argument(
+        "--app-summary-limit",
+        type=int,
+        default=10,
+        help="How many next-session app summary rows to print.",
+    )
     return parser
 
 
@@ -176,6 +182,24 @@ def main() -> int:
             """,
             [args.review_limit],
         ).fetchall()
+
+        app_summaries = conn.execute(
+            """
+            SELECT
+              app,
+              review_candidate_count,
+              urgent_review_count,
+              nonperfect_items,
+              accuracy_pct,
+              top_candidate_item_id,
+              top_candidate_shown_value,
+              next_app_priority_score
+            FROM next_session_app_summary
+            ORDER BY next_app_priority_score DESC, app ASC
+            LIMIT ?
+            """,
+            [args.app_summary_limit],
+        ).fetchall()
     finally:
         conn.close()
 
@@ -213,6 +237,11 @@ def main() -> int:
         "Prioritized Review Candidates",
         ["app", "item_id", "shown_value", "fails", "latest_result", "first_fails", "lifetime_accuracy_pct", "review_priority_score"],
         review_candidates,
+    )
+    print_table(
+        "Next-Session App Summary",
+        ["app", "review_candidate_count", "urgent_review_count", "nonperfect_items", "accuracy_pct", "top_candidate_item_id", "top_candidate_shown_value", "next_app_priority_score"],
+        app_summaries,
     )
     return 0
 

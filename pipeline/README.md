@@ -53,6 +53,7 @@ This prints:
 - first-pass accuracy by item
 - item recency summaries
 - prioritized review candidates
+- next-session app summary
 
 ## Notes
 

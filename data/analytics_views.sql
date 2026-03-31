@@ -146,3 +146,54 @@ LEFT JOIN first_pass_accuracy f
 WHERE COALESCE(w.fails, 0) > 0
    OR COALESCE(f.first_fails, 0) > 0
    OR r.latest_result = 'fail';
+
+CREATE OR REPLACE VIEW next_session_app_summary AS
+WITH review_rollup AS (
+  SELECT
+    app,
+    COUNT(*) AS review_candidate_count,
+    SUM(CASE WHEN review_priority_score >= 12 THEN 1 ELSE 0 END) AS urgent_review_count,
+    ROUND(AVG(review_priority_score), 2) AS avg_review_priority_score,
+    MAX(review_priority_score) AS top_review_priority_score,
+    ARG_MAX(item_id, review_priority_score) AS top_candidate_item_id,
+    ARG_MAX(shown_value, review_priority_score) AS top_candidate_shown_value
+  FROM prioritized_review_candidates
+  GROUP BY app
+),
+item_rollup AS (
+  SELECT
+    app,
+    COUNT(*) AS items_seen,
+    SUM(CASE WHEN lifetime_accuracy_pct < 100 THEN 1 ELSE 0 END) AS nonperfect_items
+  FROM item_recency
+  GROUP BY app
+)
+SELECT
+  e.app,
+  e.attempts,
+  e.sessions,
+  e.passes,
+  e.fails,
+  e.accuracy_pct,
+  e.avg_response_ms,
+  e.last_attempt_utc,
+  COALESCE(i.items_seen, 0) AS items_seen,
+  COALESCE(i.nonperfect_items, 0) AS nonperfect_items,
+  COALESCE(r.review_candidate_count, 0) AS review_candidate_count,
+  COALESCE(r.urgent_review_count, 0) AS urgent_review_count,
+  COALESCE(r.avg_review_priority_score, 0.0) AS avg_review_priority_score,
+  COALESCE(r.top_review_priority_score, 0.0) AS top_review_priority_score,
+  r.top_candidate_item_id,
+  r.top_candidate_shown_value,
+  ROUND(
+      (COALESCE(r.urgent_review_count, 0) * 4.0)
+    + (COALESCE(r.review_candidate_count, 0) * 1.5)
+    + (COALESCE(i.nonperfect_items, 0) * 0.75)
+    + ((100.0 - e.accuracy_pct) / 10.0)
+    + (CASE WHEN e.fails > 0 THEN 1.0 ELSE 0.0 END)
+  , 2) AS next_app_priority_score
+FROM event_counts_by_app e
+LEFT JOIN review_rollup r
+  ON e.app = r.app
+LEFT JOIN item_rollup i
+  ON e.app = i.app;
