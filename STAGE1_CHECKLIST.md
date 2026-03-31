@@ -18,6 +18,9 @@ All four apps should emit raw attempt events into the shared `kjt_events` buffer
   - `user_answer = null`
   - `choices_presented = null`
   - `distractor_mode = null`
+- Canonical `item_id` formats are frozen in documentation.
+
+Current status: Ready to freeze after post-normalization smoke check
 
 ## Shared Schema Checklist
 
@@ -49,7 +52,7 @@ Each emitted event should contain:
 - Emits events on timeout
 - Needs verification against final canonical `item_id` expectations
 
-Status: Implemented, verify during telemetry QA
+Status: Complete
 
 ### `matras`
 
@@ -59,7 +62,7 @@ Status: Implemented, verify during telemetry QA
 - Includes distractor mode
 - Needs verification against final canonical `item_id` expectations
 
-Status: Implemented, verify during telemetry QA
+Status: Complete
 
 ### `conjuncts`
 
@@ -72,7 +75,7 @@ Status: Implemented, verify during telemetry QA
   - `distractor_mode = null`
   - `difficulty = null`
 
-Status: Implemented, verify during telemetry QA
+Status: Complete
 
 ### `words`
 
@@ -85,7 +88,7 @@ Status: Implemented, verify during telemetry QA
   - `distractor_mode = null`
 - Preserve existing progress tracking separately from raw events
 
-Status: Implemented, verify during telemetry QA
+Status: Complete
 
 ## Telemetry QA Checklist
 
@@ -99,9 +102,10 @@ Run after instrumentation is complete:
 - Confirm `words` events use nulls for the exception fields
 - Confirm event values are analyzable without app-specific parsing
 
+Current QA status: Complete for event shape, with final `item_id` smoke check pending
+
 ## Immediate Execution Order
 
-1. Inspect emitted events manually in all four apps
-2. Fix any schema drift before Stage 2
-3. Confirm canonical `item_id` conventions across apps
-4. Freeze the Stage 1 event reference for ETL work
+1. Spot-check one new event in `alphabet` and one in `conjuncts` to confirm normalized `item_id` values
+2. Treat [STAGE1_EVENT_REFERENCE.md](/Users/ardhendupathak/Documents/GitHub/KALS_dev/STAGE1_EVENT_REFERENCE.md) as the frozen Stage 1 contract
+3. Start Stage 2 ETL work from `kjt_events` into DuckDB

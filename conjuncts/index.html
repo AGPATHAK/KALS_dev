@@ -417,6 +417,10 @@
     return { row, prompt: row.prompt, options, correctIdx: options.indexOf(correct) };
   }
 
+  function canonicalConjunctId(id){
+    return String(id).replace(/^JK/, 'C');
+  }
+
   // ── Session engine ────────────────────────────────────────────
   const timerRing   = qs('#timer-ring');
   const elPrompt    = qs('#prompt');
@@ -513,7 +517,7 @@
     const correct = (i === card.correctIdx);
     recordAttempt(row, correct, card.options[i]);
     KJT.recordAttempt({
-      item_id:           'conjunct.' + row.id,
+      item_id:           'conjunct.' + canonicalConjunctId(row.id),
       item_type:         'conjunct',
       shown_value:       card.prompt,
       correct_answer:    card.options[card.correctIdx],
@@ -586,7 +590,7 @@
     session.times.push(session.timerSec);
     recordAttempt(card.row, false, '⏳');
     KJT.recordAttempt({
-      item_id:           'conjunct.' + card.row.id,
+      item_id:           'conjunct.' + canonicalConjunctId(card.row.id),
       item_type:         'conjunct',
       shown_value:       card.prompt,
       correct_answer:    card.options[card.correctIdx],

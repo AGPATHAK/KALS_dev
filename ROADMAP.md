@@ -22,14 +22,14 @@ This roadmap is written to serve both goals at once. The Kannada apps are the pr
 
 ## Current Status
 
-Current stage: Stage 1, app instrumentation.
+Current stage: Stage 2 readiness, pending final `item_id` smoke check.
 
 Repository status at time of writing:
 
-- `alphabet` is partially aligned with the Stage 1 telemetry model.
-- `matras` is partially aligned with the Stage 1 telemetry model.
-- `conjuncts` and `words` still need to be brought onto the shared raw-event schema.
-- `agent`, `pipeline`, and `data` are present as placeholders but do not yet contain working Stage 2+ infrastructure.
+- All four apps emit Stage 1 raw telemetry into `kjt_events`.
+- Stage 1.5 manual telemetry QA has been completed across all four apps.
+- Stage 1 event conventions are frozen in `STAGE1_EVENT_REFERENCE.md`.
+- `agent`, `pipeline`, and `data` are still placeholders and are the natural entry point for Stage 2 work.
 
 ## Roadmap Overview
 

@@ -267,7 +267,10 @@ const LETTERS = [
 {kn:"ಹ",dev:"ह",group:"aspirate"},
 {kn:"ಳ",dev:"ळ",group:"liquid"},
 {kn:"ಕ್ಷ",dev:"क्ष",group:"consonant"}
-];
+].map((letter, idx) => ({
+  ...letter,
+  id: `L${String(idx + 1).padStart(3, '0')}`
+}));
 
 const STORAGE_KEY="kannada_alphabet_progress_v1";
 
@@ -442,7 +445,7 @@ const isCorrect = value === correct;
 // ── KJT: record attempt ───────────────────────────────────────────────────
 const allOptions = Array.from(buttons).map(b => b.textContent);
 KJT.recordAttempt({
-  item_id:        'alpha.' + card.kn,
+  item_id:        'alpha.' + card.id,
   item_type:      'akshara',
   shown_value:    card.kn,
   correct_answer: correct,
@@ -506,7 +509,7 @@ const card=session.cards[session.index];
 const buttons=document.querySelectorAll("#options button");
 const allOptions = Array.from(buttons).map(b => b.textContent);
 KJT.recordAttempt({
-  item_id:        'alpha.' + card.kn,
+  item_id:        'alpha.' + card.id,
   item_type:      'akshara',
   shown_value:    card.kn,
   correct_answer: card.dev,
