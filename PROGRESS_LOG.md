@@ -1,0 +1,91 @@
+# KALS Progress Log
+
+Append-only session log for resuming work across gaps.
+
+## How To Use This Log
+
+- Add a new dated entry at the top for each meaningful work session or milestone.
+- Reference commit hashes when available.
+- Keep entries focused on:
+  - what changed
+  - what now works
+  - known limitations
+  - immediate next step
+
+## 2026-03-31
+
+### Current State
+
+- Stage 1 is complete and frozen.
+- Stage 2 ingest is working with Python, Playwright, and DuckDB.
+- Stage 2.5 learner-state analytics are working.
+- A first deterministic Stage 3A baseline recommender is working.
+- Apps are still one-way telemetry emitters only; no app-agent command protocol exists yet.
+
+### What Works Now
+
+- All four apps emit shared raw telemetry into `kjt_events`.
+- Stage 2 ingest reads the persistent Playwright browser profile and stores validated events in DuckDB.
+- Raw-event validation and deduplication are working.
+- Analytical views exist for:
+  - app counts
+  - weak items
+  - confusion pairs
+  - first-pass accuracy
+  - item recency
+  - prioritized review candidates
+  - next-session app summary
+- The deterministic recommender outputs:
+  - recommended next app
+  - recommended session size
+  - top review items
+  - simple rule-based reasons
+
+### Key Commands To Resume
+
+Open an app in the persistent Playwright browser profile:
+
+```bash
+.venv/bin/python pipeline/open_app.py alphabet
+```
+
+Ingest the latest browser-side events:
+
+```bash
+.venv/bin/python pipeline/ingest_events.py
+```
+
+Inspect the analytical views:
+
+```bash
+.venv/bin/python pipeline/query_insights.py --refresh-views
+```
+
+Run the deterministic recommender:
+
+```bash
+.venv/bin/python pipeline/recommend_next_session.py --refresh-views
+```
+
+### Known Limitations
+
+- Current data is still small and mainly useful for pipeline validation, not strong pedagogical conclusions.
+- The recommender is deterministic and intentionally simple.
+- The recommender is still advisory only; it does not trigger apps or push recommended cards into app state.
+- The Playwright browser profile is separate from the normal browser profile by design.
+- `ROADMAP.md` should be kept aligned with actual progress when milestones are crossed.
+
+### Immediate Next Step
+
+Move from the current deterministic baseline toward a fuller Stage 3A rule engine by adding one or both of:
+
+- stop or continue guidance using the fatigue heuristic
+- a more explicit recommendation output format that can later be logged and evaluated
+
+### Relevant Commits
+
+- `e732ee2` Add session-size rule to the deterministic recommender
+- `9b418a3` Add next-session app summary to Stage 2 analytics
+- `2f60093` Build Stage 2 ingest pipeline and initial analytics views
+- `6c02cee` Freeze Stage 1 telemetry schema and normalize item IDs
+- `53455ae` Complete Stage 1 telemetry instrumentation for conjuncts and words

@@ -22,14 +22,17 @@ This roadmap is written to serve both goals at once. The Kannada apps are the pr
 
 ## Current Status
 
-Current stage: Stage 2 readiness, pending final `item_id` smoke check.
+Current stage: Early Stage 3A baseline, with Stage 1, Stage 2, and Stage 2.5 foundations in place.
 
 Repository status at time of writing:
 
 - All four apps emit Stage 1 raw telemetry into `kjt_events`.
 - Stage 1.5 manual telemetry QA has been completed across all four apps.
 - Stage 1 event conventions are frozen in `STAGE1_EVENT_REFERENCE.md`.
-- `agent`, `pipeline`, and `data` are still placeholders and are the natural entry point for Stage 2 work.
+- Stage 2 ingest is working with a persistent Playwright browser profile and DuckDB.
+- Stage 2.5 analytical views are producing recommendation-ready learner state.
+- A first deterministic next-session recommender baseline exists in `pipeline/recommend_next_session.py`.
+- Apps are not yet command-receptive; recommendations are still advisory rather than closed-loop.
 
 ## Roadmap Overview
 
