@@ -55,6 +55,19 @@ This prints:
 - prioritized review candidates
 - next-session app summary
 
+Generate a deterministic next-session recommendation:
+
+```bash
+.venv/bin/python pipeline/recommend_next_session.py --refresh-views
+```
+
+This prints:
+
+- recommended next app
+- recommended session size
+- top review items for that app
+- app ranking with simple rule-based scores
+
 ## Notes
 
 - This script is intentionally local-first and small.
