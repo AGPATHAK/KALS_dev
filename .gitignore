@@ -1,0 +1,4 @@
+
+.venv/
+.playwright-profile/
+data/kals.duckdb
