@@ -30,6 +30,7 @@ Append-only session log for resuming work across gaps.
 - `conjuncts` now also has an optional app-side consumption path for the same advisory handoff pattern.
 - Guided-session analytics now exist on top of `intervention_id`, so agent-guided sessions can be measured separately from normal sessions.
 - Guided-session analytics can now compare agent-guided sessions against normal sessions by app.
+- Guided-session evaluation now has its own follow-up report for deciding whether the agent should repeat the same app, continue it, or switch.
 
 ### What Works Now
 
@@ -76,6 +77,10 @@ Append-only session log for resuming work across gaps.
   - guided focus-item outcomes
   - guided app performance
   - guided-vs-normal app comparison
+- `pipeline/evaluate_guided_sessions.py` can now:
+  - evaluate whether guided focus items were actually surfaced
+  - report whether they were cleared or still failing
+  - suggest a simple follow-up action per guided session
 
 ### Current Replay Signal
 
@@ -126,6 +131,7 @@ Deliver the current handoff into the app environment:
 - All four apps now support optional advisory handoff consumption, but the handoff is still learner-started rather than automatically enforced.
 - Guided-session evaluation is still early and depends on creating more real guided-session data.
 - Guided-session comparisons are now possible, but the sample is still too small for strong conclusions.
+- The new follow-up actions are still heuristic and should be treated as evaluation scaffolding, not final policy.
 
 ### Immediate Next Step
 
@@ -133,8 +139,8 @@ Use the replay output to refine the deterministic rule engine before adding more
 
 - generate more real guided-session data in the Playwright profile
 - inspect guided-session performance, focus-item outcomes, and guided-vs-normal comparisons in DuckDB
+- use guided-session evaluation to decide whether the recommender should repeat, continue, or switch after a guided run
 - decide how much of the current handoff contract should become the real app command interface
-- evaluate whether replay and guided-session metrics are enough before touching the rule engine again
 
 ### Relevant Commits
 

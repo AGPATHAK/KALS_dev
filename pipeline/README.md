@@ -161,6 +161,20 @@ Persist replay evaluation rows for later inspection:
 .venv/bin/python pipeline/replay_evaluate.py --save-run
 ```
 
+Evaluate guided sessions and suggest follow-up actions:
+
+```bash
+.venv/bin/python pipeline/evaluate_guided_sessions.py --refresh-views
+```
+
+This prints:
+
+- recent guided sessions
+- whether the intended focus items were surfaced
+- whether those focus items were cleared or still failing
+- a simple follow-up action such as `repeat_same_app`, `continue_same_app`, or `switch_or_expand`
+- guided-vs-normal comparison for apps that already have guided-session data
+
 ## Notes
 
 - This script is intentionally local-first and small.
@@ -175,6 +189,7 @@ Persist replay evaluation rows for later inspection:
   - `kals_pending_recommendation_handoff`
 - Guided sessions can now be evaluated analytically because app-side guided runs write the delivered `handoff_id` back into raw telemetry as `intervention_id`.
 - The analytics layer can now compare guided-session performance against normal-session performance by app.
+- Guided-session evaluation is now separated into its own script so the follow-up decision remains readable and inspectable.
 
 ## Use The Playwright Browser For Stage 2
 

@@ -454,3 +454,76 @@ SELECT
 FROM normal_app_performance n
 FULL OUTER JOIN guided_app_performance g
   ON n.app = g.app;
+
+CREATE OR REPLACE VIEW guided_session_evaluation AS
+WITH focus_rollup AS (
+  SELECT
+    intervention_id,
+    session_id,
+    app,
+    COUNT(*) AS focus_items_declared,
+    SUM(CASE WHEN attempts_on_focus_item > 0 THEN 1 ELSE 0 END) AS focus_items_seen_count,
+    SUM(CASE WHEN COALESCE(fails_on_focus_item, 0) > 0 THEN 1 ELSE 0 END) AS focus_items_failed_count,
+    SUM(CASE WHEN attempts_on_focus_item > 0 AND COALESCE(fails_on_focus_item, 0) = 0 THEN 1 ELSE 0 END) AS focus_items_cleared_count
+  FROM guided_focus_item_outcomes
+  GROUP BY intervention_id, session_id, app
+)
+SELECT
+  g.app,
+  g.intervention_id,
+  g.session_id,
+  g.session_start_utc,
+  g.session_end_utc,
+  g.attempts,
+  g.passes,
+  g.fails,
+  g.accuracy_pct,
+  g.avg_response_ms,
+  g.selection_policy,
+  g.selection_reason,
+  g.top_driver_item_id,
+  g.top_driver_shown_value,
+  COALESCE(g.focus_item_count, f.focus_items_declared, 0) AS focus_item_count,
+  COALESCE(f.focus_items_seen_count, 0) AS focus_items_seen_count,
+  COALESCE(f.focus_items_failed_count, 0) AS focus_items_failed_count,
+  COALESCE(f.focus_items_cleared_count, 0) AS focus_items_cleared_count,
+  ROUND(
+    100.0 * COALESCE(f.focus_items_seen_count, 0) / NULLIF(COALESCE(g.focus_item_count, f.focus_items_declared, 0), 0),
+    1
+  ) AS focus_item_surface_rate_pct,
+  ROUND(
+    100.0 * COALESCE(f.focus_items_cleared_count, 0) / NULLIF(COALESCE(g.focus_item_count, f.focus_items_declared, 0), 0),
+    1
+  ) AS focus_item_clear_rate_pct,
+  CASE
+    WHEN COALESCE(g.focus_item_count, f.focus_items_declared, 0) = 0 THEN 'no_focus_items'
+    WHEN COALESCE(f.focus_items_seen_count, 0) < COALESCE(g.focus_item_count, f.focus_items_declared, 0) THEN 'focus_items_not_fully_seen'
+    WHEN COALESCE(f.focus_items_failed_count, 0) > 0 THEN 'focus_items_still_failing'
+    WHEN g.fails > 0 THEN 'nonfocus_errors_remain'
+    ELSE 'focus_items_cleared'
+  END AS guided_outcome,
+  CASE
+    WHEN COALESCE(g.focus_item_count, f.focus_items_declared, 0) = 0 THEN 'inspect_handoff'
+    WHEN COALESCE(f.focus_items_seen_count, 0) < COALESCE(g.focus_item_count, f.focus_items_declared, 0) THEN 'repeat_same_app'
+    WHEN COALESCE(f.focus_items_failed_count, 0) > 0 THEN 'repeat_same_app'
+    WHEN g.fails > 0 THEN 'continue_same_app'
+    ELSE 'switch_or_expand'
+  END AS follow_up_action
+FROM guided_session_summary g
+LEFT JOIN focus_rollup f
+  ON g.intervention_id = f.intervention_id
+ AND g.session_id = f.session_id
+ AND g.app = f.app;
+
+CREATE OR REPLACE VIEW guided_follow_up_summary AS
+SELECT
+  app,
+  guided_outcome,
+  follow_up_action,
+  COUNT(*) AS session_count,
+  ROUND(AVG(accuracy_pct), 1) AS avg_accuracy_pct,
+  ROUND(AVG(focus_item_surface_rate_pct), 1) AS avg_focus_surface_rate_pct,
+  ROUND(AVG(focus_item_clear_rate_pct), 1) AS avg_focus_clear_rate_pct,
+  MAX(session_end_utc) AS last_session_end_utc
+FROM guided_session_evaluation
+GROUP BY app, guided_outcome, follow_up_action;
