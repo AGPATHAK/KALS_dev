@@ -108,3 +108,41 @@ Deferred design ideas that are important, but intentionally not on the current c
 - Why deferred for now:
   The current priority is still validating the first full agent-app chain.
   Data management is important, but it is a product/ops feature rather than a blocker for the current control-loop milestone.
+
+### Reuse App-Side Leitner Signals In The Coach
+
+- Idea:
+  Bring the coach recommender closer to the standalone apps' intuitive mastery logic by reusing or reconstructing Leitner-lite signals at the analytics layer.
+
+- Why it matters:
+  The standalone apps already feel more pedagogically intuitive because they respond to item mastery, weakness, and recovery in a lightweight spaced-repetition style.
+  The current coach still leans too heavily on cumulative telemetry totals, which can keep recommending `alphabet` longer than feels reasonable.
+
+- What this could enable later:
+  - coach rankings that decay old mistakes more naturally
+  - stronger use of recent recovery and box-like mastery state
+  - fewer cases where high historical exposure dominates current pedagogical need
+  - closer alignment between standalone app behavior and coach-guided behavior
+
+- Why deferred for now:
+  The roadmap priority is still to complete the first major architecture milestones before deep recommender retuning.
+  This is a meaningful recommendation-policy refinement, not a blocker for the Stage 3B reflective-layer milestone.
+
+### Local LLM Reflection Option
+
+- Idea:
+  Support a local LLM runtime, such as Llama or a similar local model, for Stage 3B reflection work.
+
+- Why it matters:
+  Local inference would let reflective analysis be tested without an external API key, recurring API cost, or cloud dependency.
+  It would also fit the project's local-first development style and make experimentation easier once the reflection contract stabilizes.
+
+- What this could enable later:
+  - offline Stage 3B experimentation
+  - local comparison between OpenAI reflections and local-model reflections
+  - easier privacy-preserving testing on real learner history
+  - a future pluggable reflection backend instead of a single-provider path
+
+- Why deferred for now:
+  The current goal is to validate the Stage 3B contract itself before multiplying model backends.
+  Local-model support is best added once the reflection input/output shape is stable enough to compare providers fairly.
