@@ -41,6 +41,7 @@ Append-only session log for resuming work across gaps.
 - The smoother practice entrypoint now also has a one-command launcher that starts the local coach control server and opens the coach together.
 - Guided review now uses a smaller focus subset in short handoffs so app-side Leitner-lite spacing can actually resurface weak items instead of filling the whole session with distinct targets.
 - Stage 3B now has an initial reflective-layer scaffold: curated context, bounded prompt construction, optional OpenAI calling, and persistent reflection logging.
+- Manual ChatGPT reflections can now also be imported and logged into DuckDB, so Stage 3B can be tested offline without an API key while still preserving comparison history.
 
 ### What Works Now
 
@@ -120,6 +121,11 @@ Append-only session log for resuming work across gaps.
   - generate a prompt-ready reflection packet around the deterministic recommendation
   - optionally call OpenAI for a non-authoritative reflection note
   - persist reflection runs in `llm_reflection_runs`
+- `pipeline/import_manual_reflection.py` can now:
+  - rebuild the current Stage 3B context in prompt mode
+  - accept a pasted or file-backed manual ChatGPT response
+  - auto-detect JSON vs plain text reflections
+  - log manual reflections into `llm_reflection_runs` with provider/model labels
 
 ### Current Replay Signal
 
@@ -174,12 +180,14 @@ Deliver the current handoff into the app environment:
 - Cross-app chain validation is now complete for the first-pass advisory loop.
 - Future work should treat this validated chain as the baseline and avoid changing too many moving pieces at once.
 - Recommendation refresh is smoother now, but it depends on keeping the local coach control server running in a separate terminal during practice.
+- Manual reflection import currently assumes the current deterministic context is the one the pasted ChatGPT response refers to; if you want perfect historical alignment, import soon after generating the prompt.
 
 ### Immediate Next Step
 
 Use the smoother coach-led refresh loop to generate more natural real-practice data before major recommender refinements. The most likely next changes are:
 
 - keep testing the local coach control path during real practice
+- use the new manual reflection import path to collect a small set of offline Stage 3B reflections before adding API-backed reflection runs
 - use guided-session performance, focus-item outcomes, and guided-vs-normal comparisons to refine the recommender once the real-practice sample is less toy-like
 - keep major refinements deferred unless they are needed to interpret the validated chain
 - decide how much of the current handoff contract should become the real app command interface

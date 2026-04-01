@@ -96,6 +96,26 @@ This reflective layer:
 - never replaces the rule-based recommendation or handoff
 - can persist reflection runs into `llm_reflection_runs`
 
+If you want to test Stage 3B manually in ChatGPT before using an API key:
+
+```bash
+.venv/bin/python pipeline/reflect_recommendation.py --refresh-views --format prompt
+```
+
+Paste that prompt into ChatGPT, then import the returned reflection back into DuckDB:
+
+```bash
+pbpaste | .venv/bin/python pipeline/import_manual_reflection.py --refresh-views
+```
+
+Or import from a saved file:
+
+```bash
+.venv/bin/python pipeline/import_manual_reflection.py --refresh-views --input-file /path/to/reflection.json
+```
+
+This keeps manual Stage 3B testing part of the same logged workflow even before an API key is available.
+
 Open the browser-side coach hub in the persistent Playwright profile:
 
 ```bash
