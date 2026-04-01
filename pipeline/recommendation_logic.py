@@ -154,6 +154,14 @@ def choose_recommended_app(app_rows: List[tuple]) -> Tuple[Optional[tuple], str,
     return app_rows[0], "highest_priority", "choose the app with the highest current cross-app priority score"
 
 
+def guided_focus_limit(app: str, session_size: int) -> int:
+    if session_size <= 5:
+        return 2
+    if session_size <= 10:
+        return 3 if app != "words" else 4
+    return min(5, max(3, session_size // 3))
+
+
 def build_payload(
     *,
     db_path: Path,
@@ -191,8 +199,7 @@ def build_payload(
         f"{review_count} total review candidate(s), "
         f"accuracy {accuracy_pct}%"
     )
-    focus_item_ids = [item_id for (item_id, *_rest) in top_items]
-    focus_items = [
+    display_top_items = [
         {
             "item_id": item_id,
             "shown_value": shown_value,
@@ -208,6 +215,9 @@ def build_payload(
             priority_score,
         ) in top_items
     ]
+    focus_limit = guided_focus_limit(app, session_size)
+    focus_items = display_top_items[:focus_limit]
+    focus_item_ids = [item["item_id"] for item in focus_items]
     handoff_seed = {
         "contract_version": RECOMMENDATION_CONTRACT_VERSION,
         "target_app": app,
@@ -272,23 +282,23 @@ def build_payload(
         },
         "top_review_items": [
             {
-                "item_id": item_id,
-                "shown_value": shown_value,
+                "item_id": item["item_id"],
+                "shown_value": item["shown_value"],
                 "fails": fails,
                 "latest_result": latest_result,
                 "first_fails": first_fails,
                 "lifetime_accuracy_pct": lifetime_accuracy_pct,
-                "review_priority_score": priority_score,
+                "review_priority_score": item["review_priority_score"],
             }
-            for (
-                item_id,
-                shown_value,
+            for item, (
+                _item_id,
+                _shown_value,
                 fails,
                 latest_result,
                 first_fails,
                 lifetime_accuracy_pct,
-                priority_score,
-            ) in top_items
+                _priority_score,
+            ) in zip(display_top_items, top_items)
         ],
         "app_ranking": [
             {

@@ -140,6 +140,8 @@ This emits a machine-friendly contract with:
 - recommended item IDs
 - a future app-request block
 
+For short guided sessions, the handoff now deliberately includes only a small focus subset rather than the full review list, so app-side Leitner-lite spacing has room to resurface the same weak items across the session instead of filling every slot with a different target.
+
 Deliver the current handoff contract into the persistent Playwright app environment:
 
 ```bash

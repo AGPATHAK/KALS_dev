@@ -39,6 +39,7 @@ Append-only session log for resuming work across gaps.
 - The practice flow is now smoother: the coach opens apps in new tabs, shows the post-practice pipeline commands, and every app exposes a direct `Coach Hub` return shortcut in its header.
 - A lightweight local coach control server now exists as the next UX layer above the validated pipeline, so the browser can request ingest + recommendation refresh without dropping back into the old stop-and-run-bash loop each time.
 - The smoother practice entrypoint now also has a one-command launcher that starts the local coach control server and opens the coach together.
+- Guided review now uses a smaller focus subset in short handoffs so app-side Leitner-lite spacing can actually resurface weak items instead of filling the whole session with distinct targets.
 
 ### What Works Now
 
