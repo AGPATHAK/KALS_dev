@@ -85,6 +85,25 @@
         <label for="auto-advance" class="text-slate-700">Auto-advance after scoring</label>
       </div>
 
+      <div id="agent-handoff-panel" class="hidden rounded-xl border border-emerald-200 bg-emerald-50 p-4 space-y-3">
+        <div class="flex items-start justify-between gap-3">
+          <div>
+            <p class="text-xs font-semibold uppercase tracking-wide text-emerald-700">Agent-Guided Session</p>
+            <p id="agent-handoff-message" class="text-sm text-slate-700 mt-1"></p>
+            <p id="agent-handoff-meta" class="text-xs text-slate-500 mt-2"></p>
+          </div>
+          <button id="btn-dismiss-guided"
+            class="text-xs text-slate-500 underline hover:text-slate-700">
+            Dismiss
+          </button>
+        </div>
+        <div id="agent-handoff-items" class="flex flex-wrap gap-2"></div>
+        <button id="btn-start-guided"
+          class="w-full py-3 bg-emerald-700 text-white rounded-xl text-base font-semibold hover:bg-emerald-800 transition-colors">
+          Start Recommended Session
+        </button>
+      </div>
+
       <button id="btn-start"
         class="w-full py-4 bg-black text-white rounded-xl text-lg font-semibold hover:bg-slate-800 transition-colors">
         Start Session
@@ -365,6 +384,8 @@ const WORDS = [
    STORAGE
 ══════════════════════════════════════════ */
 const PROG_KEY = 'kn_words_progress_v1';
+const LATEST_HANDOFF_KEY = 'kals_latest_recommendation_handoff';
+const PENDING_HANDOFF_KEY = 'kals_pending_recommendation_handoff';
 
 function loadProg() {
   try {
@@ -457,6 +478,68 @@ function isWeak(word, prog) {
 
 function countWeak(prog) { return WORDS.filter(w => isWeak(w, prog)).length; }
 
+function readStorageJson(key) {
+  try { return JSON.parse(localStorage.getItem(key) || 'null'); } catch { return null; }
+}
+
+function normalizeWordItemId(value) {
+  return String(value || '').replace(/^word\./, '');
+}
+
+function validateWordsHandoff(handoff) {
+  if (!handoff || typeof handoff !== 'object') return null;
+  if (handoff.contract_version !== 'kals.recommendation.v1') return null;
+  if (handoff.action !== 'start_practice_session') return null;
+  if (handoff.target_app !== 'words') return null;
+  if (handoff.target_mode !== 'recognition') return null;
+  if (!handoff.app_request || handoff.app_request.app !== 'words') return null;
+  if (!Number.isInteger(handoff.session_size) || handoff.session_size <= 0) return null;
+
+  const recommendedIds = Array.isArray(handoff.app_request.recommended_item_ids)
+    ? handoff.app_request.recommended_item_ids.map(normalizeWordItemId).filter(Boolean)
+    : [];
+
+  return {
+    ...handoff,
+    app_request: {
+      ...handoff.app_request,
+      recommended_item_ids: recommendedIds
+    }
+  };
+}
+
+function getPendingWordsHandoff() {
+  return validateWordsHandoff(readStorageJson(PENDING_HANDOFF_KEY));
+}
+
+function clearPendingWordsHandoff() {
+  localStorage.removeItem(PENDING_HANDOFF_KEY);
+}
+
+function buildGuidedDeck(handoff, size, prog) {
+  const byId = new Map(WORDS.map(w => [w.id, w]));
+  const seen = new Set();
+  const focusWords = [];
+
+  (handoff.app_request.recommended_item_ids || []).forEach(id => {
+    if (seen.has(id)) return;
+    const word = byId.get(id);
+    if (!word) return;
+    seen.add(id);
+    focusWords.push(word);
+  });
+
+  if (focusWords.length >= size) return focusWords.slice(0, size);
+
+  const remainingPool = WORDS.filter(w => !seen.has(w.id));
+  const extra = weightedSample(
+    remainingPool,
+    Math.min(size - focusWords.length, remainingPool.length),
+    prog
+  );
+  return [...focusWords, ...extra];
+}
+
 /* ══════════════════════════════════════════
    SPEECH
 ══════════════════════════════════════════ */
@@ -476,7 +559,8 @@ function speakKn(text) {
 ══════════════════════════════════════════ */
 let PROG = loadProg();
 let session = { words:[], idx:0, phase:'glimpse', timer:null, timerTick:null,
-                scored:false, reviewed:0, correct:0, wrong:0, startMs:0, revealStartPerf:0 };
+                scored:false, reviewed:0, correct:0, wrong:0, startMs:0, revealStartPerf:0,
+                handoff:null };
 
 /* ══════════════════════════════════════════
    HOME
@@ -493,26 +577,51 @@ function renderHome() {
       <div class="text-2xl font-bold">${val}</div>
       <div class="text-xs text-slate-400 uppercase tracking-wide mt-1">${label}</div>
     </div>`).join('');
+
+  const handoff = getPendingWordsHandoff();
+  const panel = qs('#agent-handoff-panel');
+  if (!handoff) {
+    panel.classList.add('hidden');
+    qs('#agent-handoff-items').innerHTML = '';
+    return;
+  }
+
+  panel.classList.remove('hidden');
+  qs('#agent-handoff-message').textContent =
+    handoff.ui_message || `Open words for a ${handoff.session_size}-item recommended session.`;
+  qs('#agent-handoff-meta').textContent =
+    `${handoff.selection_reason || 'Agent guidance available'} · ${handoff.session_size} cards`;
+  const focusItems = Array.isArray(handoff.focus_items) ? handoff.focus_items.slice(0, 6) : [];
+  qs('#agent-handoff-items').innerHTML = focusItems.length
+    ? focusItems.map(item => `
+      <span class="kn inline-flex items-center rounded-full bg-white px-3 py-1 text-sm font-semibold text-emerald-800 border border-emerald-200">
+        ${escHtml(item.shown_value || normalizeWordItemId(item.item_id))}
+      </span>
+    `).join('')
+    : '<span class="text-xs text-slate-500">No specific focus items attached.</span>';
 }
 
 /* ══════════════════════════════════════════
    SESSION
 ══════════════════════════════════════════ */
-function startSession() {
+function startSession(options = {}) {
   clearSession();
   PROG = loadProg();
 
   const glimpseSec  = Number(qs('#glimpse-seconds').value);
-  const size        = Number(qs('#session-size').value);
+  const handoff     = validateWordsHandoff(options.handoff || null);
+  const size        = handoff ? handoff.session_size : Number(qs('#session-size').value);
   const mode        = qs('#practice-mode').value;
 
   let pool = WORDS.slice();
-  if (mode === 'mistakes') {
+  if (!handoff && mode === 'mistakes') {
     const weak = pool.filter(w => isWeak(w, PROG));
     if (weak.length > 0) pool = weak;
   }
 
-  session.words   = weightedSample(pool, Math.min(size, pool.length), PROG);
+  session.words   = handoff
+    ? buildGuidedDeck(handoff, Math.min(size, WORDS.length), PROG)
+    : weightedSample(pool, Math.min(size, pool.length), PROG);
   session.idx     = 0;
   session.reviewed= 0;
   session.correct = 0;
@@ -520,8 +629,10 @@ function startSession() {
   session.startMs = Date.now();
   session.glimpseSec = glimpseSec;
   session.revealStartPerf = 0;
+  session.handoff = handoff;
 
   qs('#card-total').textContent = String(session.words.length);
+  if (handoff) clearPendingWordsHandoff();
   KJT.startSession();
   show('train');
   runCard();
@@ -655,6 +766,7 @@ function scoreCard(correct) {
     response_time_ms:  responseTimeMs,
     distractor_mode:   null,
     difficulty:        null,
+    intervention_id:   session.handoff?.handoff_id || null,
   });
   saveProg(PROG);
 
@@ -803,6 +915,18 @@ function resetProgress() {
    EVENT WIRING
 ══════════════════════════════════════════ */
 qs('#btn-start').addEventListener('click', startSession);
+qs('#btn-start-guided').addEventListener('click', () => {
+  const handoff = getPendingWordsHandoff();
+  if (!handoff) {
+    renderHome();
+    return;
+  }
+  startSession({ handoff });
+});
+qs('#btn-dismiss-guided').addEventListener('click', () => {
+  clearPendingWordsHandoff();
+  renderHome();
+});
 qs('#btn-show-stats').addEventListener('click', () => { renderStats(); show('stats'); });
 qs('#btn-reset').addEventListener('click', resetProgress);
 

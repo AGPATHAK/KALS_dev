@@ -107,6 +107,13 @@ This will:
 - verify the write
 - optionally log the delivery in DuckDB
 
+Current app-side consumer:
+
+- `words` can now detect a pending advisory handoff on its home screen
+- `words` shows an `Agent-Guided Session` panel when a valid pending handoff exists
+- starting that guided session prioritizes the recommended word IDs and then fills the rest of the deck normally
+- the pending handoff is consumed on guided start, while the latest delivered handoff remains available for inspection
+
 Persist a recommendation run for later evaluation:
 
 ```bash

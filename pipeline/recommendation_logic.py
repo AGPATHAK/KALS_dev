@@ -185,6 +185,7 @@ def build_payload(
         selection_policy=selection_policy,
         last_session_fail_count=last_session_fail_count,
     )
+    resolved_generated_at_utc = generated_at_utc or now_utc_iso()
     rationale_summary = (
         f"{urgent_count} urgent review candidate(s), "
         f"{review_count} total review candidate(s), "
@@ -207,8 +208,18 @@ def build_payload(
             priority_score,
         ) in top_items
     ]
+    handoff_seed = {
+        "contract_version": RECOMMENDATION_CONTRACT_VERSION,
+        "target_app": app,
+        "session_size": session_size,
+        "selection_policy": selection_policy,
+        "focus_item_ids": focus_item_ids,
+        "generated_at_utc": resolved_generated_at_utc,
+    }
+    handoff_id = make_hash(json.dumps(handoff_seed, ensure_ascii=False, sort_keys=True))
     handoff = {
         "contract_version": RECOMMENDATION_CONTRACT_VERSION,
+        "handoff_id": handoff_id,
         "action": "start_practice_session",
         "delivery_mode": "advisory",
         "target_app": app,
@@ -236,7 +247,7 @@ def build_payload(
     }
 
     payload = {
-        "generated_at_utc": generated_at_utc or now_utc_iso(),
+        "generated_at_utc": resolved_generated_at_utc,
         "source_db_path": str(db_path),
         "recommender_version": RECOMMENDER_VERSION,
         "recommendation_contract_version": RECOMMENDATION_CONTRACT_VERSION,

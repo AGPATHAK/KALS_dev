@@ -24,6 +24,7 @@ Append-only session log for resuming work across gaps.
 - The rule baseline now includes recent-app continuation logic, not just cross-app priority ranking.
 - The recommendation output now includes a dedicated handoff contract for future app-facing use.
 - A delivery bridge can now place that handoff contract into the app environment via the persistent Playwright profile.
+- `words` now has the first optional app-side consumption path for that advisory handoff.
 
 ### What Works Now
 
@@ -38,6 +39,11 @@ Append-only session log for resuming work across gaps.
   - deliver the handoff into browser `localStorage`
   - verify that the app environment received it
   - log handoff deliveries in `handoff_delivery_runs`
+- `words/index.html` can:
+  - surface a pending handoff as an `Agent-Guided Session` panel on the home screen
+  - start a guided session that prioritizes the delivered `recommended_item_ids`
+  - consume the pending handoff on guided start
+  - attach the delivered `handoff_id` to telemetry as `intervention_id`
 - `pipeline/replay_evaluate.py` can:
   - rebuild "what the agent knew before session X"
   - run the same deterministic recommender on that snapshot
@@ -99,7 +105,7 @@ Use the replay output to refine the deterministic rule engine before adding more
 
 - make item-level recommendation hits more meaningful for repeated review sessions
 - decide how much of the current handoff contract should become the real app command interface
-- choose the first app-side consumption path for the delivered handoff keys
+- extend the app-side consumption path beyond `words`
 - decide whether replay should also score partial success when the right app was chosen but the exact recommended item did not appear
 
 ### Relevant Commits
