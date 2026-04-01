@@ -30,3 +30,16 @@ CREATE TABLE IF NOT EXISTS validation_issues (
   raw_event_json VARCHAR NOT NULL,
   created_at_utc TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
+
+CREATE TABLE IF NOT EXISTS recommendation_runs (
+  recommendation_id VARCHAR PRIMARY KEY,
+  created_at_utc TIMESTAMP NOT NULL,
+  source_db_path VARCHAR NOT NULL,
+  recommended_app VARCHAR NOT NULL,
+  app_priority_score DOUBLE NOT NULL,
+  recommended_session_size INTEGER NOT NULL,
+  rationale_summary VARCHAR NOT NULL,
+  top_driver_item_id VARCHAR,
+  top_driver_shown_value VARCHAR,
+  payload_json VARCHAR NOT NULL
+);

@@ -68,6 +68,18 @@ This prints:
 - top review items for that app
 - app ranking with simple rule-based scores
 
+Structured JSON output:
+
+```bash
+.venv/bin/python pipeline/recommend_next_session.py --refresh-views --format json
+```
+
+Persist a recommendation run for later evaluation:
+
+```bash
+.venv/bin/python pipeline/recommend_next_session.py --refresh-views --save-run
+```
+
 ## Notes
 
 - This script is intentionally local-first and small.

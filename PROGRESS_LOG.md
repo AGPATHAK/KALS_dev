@@ -79,8 +79,8 @@ Run the deterministic recommender:
 
 Move from the current deterministic baseline toward a fuller Stage 3A rule engine by adding one or both of:
 
-- stop or continue guidance using the fatigue heuristic
 - a more explicit recommendation output format that can later be logged and evaluated
+- a recommendation-to-app handoff shape that Stage 5A can eventually consume
 
 ### Relevant Commits
 
