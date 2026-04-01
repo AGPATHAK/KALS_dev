@@ -44,6 +44,22 @@ CREATE TABLE IF NOT EXISTS recommendation_runs (
   payload_json VARCHAR NOT NULL
 );
 
+CREATE TABLE IF NOT EXISTS handoff_delivery_runs (
+  delivery_id VARCHAR PRIMARY KEY,
+  created_at_utc TIMESTAMP NOT NULL,
+  source_db_path VARCHAR NOT NULL,
+  contract_version VARCHAR NOT NULL,
+  recommended_app VARCHAR NOT NULL,
+  delivery_mode VARCHAR NOT NULL,
+  profile_dir VARCHAR NOT NULL,
+  source_page VARCHAR NOT NULL,
+  latest_storage_key VARCHAR NOT NULL,
+  pending_storage_key VARCHAR NOT NULL,
+  focus_item_count INTEGER NOT NULL,
+  verified BOOLEAN NOT NULL,
+  handoff_json VARCHAR NOT NULL
+);
+
 CREATE TABLE IF NOT EXISTS replay_evaluation_runs (
   evaluation_id VARCHAR PRIMARY KEY,
   created_at_utc TIMESTAMP NOT NULL,

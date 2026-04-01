@@ -93,6 +93,20 @@ This emits a machine-friendly contract with:
 - recommended item IDs
 - a future app-request block
 
+Deliver the current handoff contract into the persistent Playwright app environment:
+
+```bash
+.venv/bin/python pipeline/deliver_recommendation_handoff.py --save-run
+```
+
+This will:
+
+- generate the current recommendation handoff
+- open the target app page through the persistent Playwright profile
+- write the handoff into browser `localStorage`
+- verify the write
+- optionally log the delivery in DuckDB
+
 Persist a recommendation run for later evaluation:
 
 ```bash
@@ -133,6 +147,9 @@ Persist replay evaluation rows for later inspection:
 - Data created in your normal browser profile is separate from the Playwright profile.
 - Recommendation payloads and replay-evaluation rows can both be stored in DuckDB for later analysis.
 - The recommender output now includes a dedicated `handoff` block intended to evolve into the later bidirectional app-agent contract.
+- The delivery bridge currently writes advisory handoffs into:
+  - `kals_latest_recommendation_handoff`
+  - `kals_pending_recommendation_handoff`
 
 ## Use The Playwright Browser For Stage 2
 

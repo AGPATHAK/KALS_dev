@@ -23,6 +23,7 @@ Append-only session log for resuming work across gaps.
 - Replay evaluation rows can also be stored in DuckDB for later inspection.
 - The rule baseline now includes recent-app continuation logic, not just cross-app priority ranking.
 - The recommendation output now includes a dedicated handoff contract for future app-facing use.
+- A delivery bridge can now place that handoff contract into the app environment via the persistent Playwright profile.
 
 ### What Works Now
 
@@ -33,6 +34,10 @@ Append-only session log for resuming work across gaps.
   - persisted recommendation runs
   - selection policy metadata such as `highest_priority` vs `continue_recent_app`
   - a structured `handoff` block with action, target app, session size, and focus item IDs
+- `pipeline/deliver_recommendation_handoff.py` can:
+  - deliver the handoff into browser `localStorage`
+  - verify that the app environment received it
+  - log handoff deliveries in `handoff_delivery_runs`
 - `pipeline/replay_evaluate.py` can:
   - rebuild "what the agent knew before session X"
   - run the same deterministic recommender on that snapshot
@@ -75,11 +80,18 @@ Persist replay evaluation rows:
 .venv/bin/python pipeline/replay_evaluate.py --save-run
 ```
 
+Deliver the current handoff into the app environment:
+
+```bash
+.venv/bin/python pipeline/deliver_recommendation_handoff.py --save-run
+```
+
 ### Known Limitations
 
 - The current data is still small and ordered by a few manual sessions, so replay metrics are illustrative rather than decisive.
 - The current rule engine over-favors `alphabet` on this dataset.
 - Replay is now slightly softer than before, but it still does not capture concept-level transfer across apps.
+- The apps still do not consume the delivered handoff automatically; the bridge currently writes advisory data only.
 
 ### Immediate Next Step
 
@@ -87,6 +99,7 @@ Use the replay output to refine the deterministic rule engine before adding more
 
 - make item-level recommendation hits more meaningful for repeated review sessions
 - decide how much of the current handoff contract should become the real app command interface
+- choose the first app-side consumption path for the delivered handoff keys
 - decide whether replay should also score partial success when the right app was chosen but the exact recommended item did not appear
 
 ### Relevant Commits
