@@ -527,3 +527,41 @@ SELECT
   MAX(session_end_utc) AS last_session_end_utc
 FROM guided_session_evaluation
 GROUP BY app, guided_outcome, follow_up_action;
+
+CREATE OR REPLACE VIEW guided_chain_validation_status AS
+WITH apps AS (
+  SELECT * FROM (
+    VALUES ('alphabet'), ('matras'), ('conjuncts'), ('words')
+  ) AS t(app)
+),
+guided_rollup AS (
+  SELECT
+    app,
+    COUNT(*) AS guided_sessions,
+    SUM(CASE WHEN focus_item_count > 0 THEN 1 ELSE 0 END) AS sessions_with_focus_items,
+    SUM(CASE WHEN focus_items_seen_count > 0 THEN 1 ELSE 0 END) AS sessions_with_focus_seen,
+    MAX(session_end_utc) AS last_guided_session_utc
+  FROM guided_session_evaluation
+  GROUP BY app
+)
+SELECT
+  a.app,
+  COALESCE(g.guided_sessions, 0) AS guided_sessions,
+  COALESCE(g.sessions_with_focus_items, 0) AS sessions_with_focus_items,
+  COALESCE(g.sessions_with_focus_seen, 0) AS sessions_with_focus_seen,
+  g.last_guided_session_utc,
+  CASE
+    WHEN COALESCE(g.guided_sessions, 0) = 0 THEN 'not_started'
+    WHEN COALESCE(g.sessions_with_focus_items, 0) = 0 THEN 'guided_without_logged_focus'
+    WHEN COALESCE(g.sessions_with_focus_seen, 0) = 0 THEN 'guided_focus_not_seen'
+    ELSE 'validated'
+  END AS validation_status,
+  CASE
+    WHEN COALESCE(g.guided_sessions, 0) = 0 THEN 'run one guided session'
+    WHEN COALESCE(g.sessions_with_focus_items, 0) = 0 THEN 'deliver manual handoff again and let it auto-save'
+    WHEN COALESCE(g.sessions_with_focus_seen, 0) = 0 THEN 'rerun guided session and confirm the target item appears'
+    ELSE 'chain validated'
+  END AS next_validation_action
+FROM apps a
+LEFT JOIN guided_rollup g
+  ON a.app = g.app;

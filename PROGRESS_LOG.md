@@ -33,6 +33,7 @@ Append-only session log for resuming work across gaps.
 - Guided-session evaluation now has its own follow-up report for deciding whether the agent should repeat the same app, continue it, or switch.
 - Handoff delivery can now be manually targeted to a specific app for chain validation, without changing the recommender.
 - Manual targeted handoffs now save delivery rows automatically, so guided-session evaluation can reconstruct their focus items without needing `--save-run`.
+- Whole-chain validation now has its own report for checking which apps are fully validated and which still need one more clean guided run.
 
 ### What Works Now
 
@@ -83,6 +84,9 @@ Append-only session log for resuming work across gaps.
   - evaluate whether guided focus items were actually surfaced
   - report whether they were cleared or still failing
   - suggest a simple follow-up action per guided session
+- `pipeline/check_chain_validation.py` can now:
+  - report guided-session validation coverage by app
+  - distinguish fully validated apps from apps with only partial guided evidence
 - `pipeline/deliver_recommendation_handoff.py` can now:
   - deliver the normal recommender-selected handoff
   - or deliver a manual app-targeted handoff for validation runs
@@ -139,6 +143,7 @@ Deliver the current handoff into the app environment:
 - Guided-session comparisons are now possible, but the sample is still too small for strong conclusions.
 - The new follow-up actions are still heuristic and should be treated as evaluation scaffolding, not final policy.
 - Cross-app chain validation is still incomplete until we run real guided sessions in `alphabet`, `matras`, and `conjuncts`.
+- Cross-app chain validation should now be judged by the validation report rather than by memory or manual note-taking.
 
 ### Immediate Next Step
 

@@ -183,6 +183,18 @@ This prints:
 - a simple follow-up action such as `repeat_same_app`, `continue_same_app`, or `switch_or_expand`
 - guided-vs-normal comparison for apps that already have guided-session data
 
+Check whole-chain validation coverage across apps:
+
+```bash
+.venv/bin/python pipeline/check_chain_validation.py --refresh-views
+```
+
+This prints:
+
+- which apps have real guided sessions
+- which guided sessions also have reconstructable focus-item evidence
+- which apps are fully validated versus still needing one more clean run
+
 ## Notes
 
 - This script is intentionally local-first and small.
@@ -198,6 +210,7 @@ This prints:
 - Guided sessions can now be evaluated analytically because app-side guided runs write the delivered `handoff_id` back into raw telemetry as `intervention_id`.
 - The analytics layer can now compare guided-session performance against normal-session performance by app.
 - Guided-session evaluation is now separated into its own script so the follow-up decision remains readable and inspectable.
+- Whole-chain validation now has its own report so we can tell when all apps have truly completed the same guided-session path.
 
 ## Use The Playwright Browser For Stage 2
 
