@@ -342,11 +342,7 @@
       const focus = focusRows.filter(Boolean);
       if(!focus.length) return shuffle([...pool]).slice(0, size);
 
-      const maxRounds = size >= focus.length * 3 ? 3 : size >= focus.length * 2 ? 2 : 1;
-      const repeatedFocus = [];
-      for(let round = 0; round < maxRounds; round++) repeatedFocus.push(...focus);
-
-      const focusPlacements = repeatedFocus.slice(0, size);
+      const focusPlacements = focus.slice(0, Math.min(focus.length, size));
       const queue = new Array(size).fill(null);
       const filler = shuffle(pool.filter(row => !focus.some(f => getId(f) === getId(row))));
 
@@ -371,6 +367,20 @@
         queue[i] = filler[fillerIndex++] || focus[i % focus.length];
       }
       return queue;
+    }
+
+    function scheduleGuidedMatrasRetry(row){
+      if(!session?.handoff || !row) return;
+      const rowId = String(row.id);
+      const focusIds = new Set(session.handoff.app_request.recommended_item_ids || []);
+      if(!focusIds.has(rowId)) return;
+      session.guidedRetryCounts = session.guidedRetryCounts || {};
+      if((session.guidedRetryCounts[rowId] || 0) >= 1) return;
+      const insertAt = Math.min(session.queue.length, session.idx + 3);
+      session.queue.splice(insertAt, 0, row);
+      session.guidedRetryCounts[rowId] = (session.guidedRetryCounts[rowId] || 0) + 1;
+      session.total = session.queue.length;
+      elCardTotal.textContent = String(session.total);
     }
 
     // ---------- Deck Loading & Validation ----------
@@ -661,7 +671,7 @@
         ? buildGuidedMatrasQueue(pool, effectiveCount, handoff)
         : shuffle([...pool]).slice(0, effectiveCount);
 
-      session = { idx:0, total:queue.length, score:0, mistakes:[], times:[], timerSec:Number(s.timerSec)||5, current:null, level:s.level, pool:[...pool], queue, distractorMode:s.distractorMode || 'same-base', sessionMode:handoff ? 'guided' : (s.sessionMode || 'mixed'), chosenBase, chosenMatra, label:sessionLabel, handoff };
+      session = { idx:0, total:queue.length, score:0, mistakes:[], times:[], timerSec:Number(s.timerSec)||5, current:null, level:s.level, pool:[...pool], queue, distractorMode:s.distractorMode || 'same-base', sessionMode:handoff ? 'guided' : (s.sessionMode || 'mixed'), chosenBase, chosenMatra, label:sessionLabel, handoff, guidedRetryCounts:{} };
       elCardTotal.textContent = String(session.total);
       elScore.textContent = '0';
       const labelEl = document.getElementById('session-label');
@@ -766,6 +776,7 @@
           if(idx!==card.correctIdx && idx!==i){ b.classList.add('opacity-60'); }
         });
         session.mistakes.push({ row, chosen: card.options[i], correct: card.options[card.correctIdx] });
+        scheduleGuidedMatrasRetry(row);
         setTimeout(()=>{ isLocked=false; session.idx++; renderNext(); }, 1000);
       }
     }
@@ -807,6 +818,7 @@
       });
       // ───────────────────────────────────────────────────────────────────
       session.mistakes.push({ row, chosen: '⏳', correct: card.options[card.correctIdx] });
+      scheduleGuidedMatrasRetry(row);
       
       const buttons = qsa('button', optionsBox);
       buttons.forEach((b)=> b.classList.add('pointer-events-none'));

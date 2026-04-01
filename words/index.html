@@ -527,11 +527,7 @@ function buildLeitnerLiteGuidedDeck(pool, size, focusWords, prog) {
   const focus = focusWords.filter(Boolean);
   if (!focus.length) return weightedSample(pool, Math.min(size, pool.length), prog);
 
-  const maxRounds = size >= focus.length * 3 ? 3 : size >= focus.length * 2 ? 2 : 1;
-  const repeatedFocus = [];
-  for (let round = 0; round < maxRounds; round++) repeatedFocus.push(...focus);
-
-  const focusPlacements = repeatedFocus.slice(0, size);
+  const focusPlacements = focus.slice(0, Math.min(focus.length, size));
   const queue = new Array(size).fill(null);
   const fillerPool = pool.filter(word => !focus.some(f => f.id === word.id));
   const filler = weightedSample(fillerPool, Math.min(size, fillerPool.length), prog);
@@ -557,6 +553,18 @@ function buildLeitnerLiteGuidedDeck(pool, size, focusWords, prog) {
     queue[i] = filler[fillerIndex++] || focus[i % focus.length];
   }
   return queue;
+}
+
+function scheduleGuidedWordRetry(word) {
+  if (!session.handoff || !word) return;
+  const focusIds = new Set(session.handoff.app_request.recommended_item_ids || []);
+  if (!focusIds.has(word.id)) return;
+  session.guidedRetryCounts = session.guidedRetryCounts || {};
+  if ((session.guidedRetryCounts[word.id] || 0) >= 1) return;
+  const insertAt = Math.min(session.words.length, session.idx + 3);
+  session.words.splice(insertAt, 0, word);
+  session.guidedRetryCounts[word.id] = (session.guidedRetryCounts[word.id] || 0) + 1;
+  qs('#card-total').textContent = String(session.words.length);
 }
 
 function buildGuidedDeck(handoff, size, prog) {
@@ -594,7 +602,7 @@ function speakKn(text) {
 let PROG = loadProg();
 let session = { words:[], idx:0, phase:'glimpse', timer:null, timerTick:null,
                 scored:false, reviewed:0, correct:0, wrong:0, startMs:0, revealStartPerf:0,
-                handoff:null };
+                handoff:null, guidedRetryCounts:{} };
 
 /* ══════════════════════════════════════════
    HOME
@@ -664,6 +672,7 @@ function startSession(options = {}) {
   session.glimpseSec = glimpseSec;
   session.revealStartPerf = 0;
   session.handoff = handoff;
+  session.guidedRetryCounts = {};
 
   qs('#card-total').textContent = String(session.words.length);
   if (handoff) clearPendingWordsHandoff();
@@ -786,6 +795,7 @@ function scoreCard(correct) {
     s.box = 0;
     session.wrong++;
     PROG.totalWrong++;
+    scheduleGuidedWordRetry(w);
   }
   PROG.totalReviewed++;
   session.reviewed++;

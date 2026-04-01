@@ -376,13 +376,7 @@ function buildLeitnerLiteGuidedDeck(basePool, size, focusCards, getId){
   const focus=focusCards.filter(Boolean);
   if(!focus.length) return shuffle(basePool).slice(0, size);
 
-  const maxRounds = size >= focus.length * 3 ? 3 : size >= focus.length * 2 ? 2 : 1;
-  const repeatedFocus=[];
-  for(let round=0; round<maxRounds; round++){
-    repeatedFocus.push(...focus);
-  }
-
-  const focusPlacements = repeatedFocus.slice(0, size);
+  const focusPlacements = focus.slice(0, Math.min(focus.length, size));
   const queue = new Array(size).fill(null);
   const filler = shuffle(basePool.filter(card=>!focus.some(f=>getId(f)===getId(card))));
 
@@ -407,6 +401,18 @@ function buildLeitnerLiteGuidedDeck(basePool, size, focusCards, getId){
     queue[i] = filler[fillerIndex++] || focus[i % focus.length];
   }
   return queue;
+}
+
+function scheduleGuidedAlphabetRetry(card){
+  if(!session?.handoff || !card) return;
+  const focusIds = new Set(session.handoff.app_request.recommended_item_ids || []);
+  if(!focusIds.has(card.id)) return;
+  session.guidedRetryCounts = session.guidedRetryCounts || {};
+  if((session.guidedRetryCounts[card.id] || 0) >= 1) return;
+  const insertAt = Math.min(session.cards.length, session.index + 3);
+  session.cards.splice(insertAt, 0, card);
+  session.guidedRetryCounts[card.id] = (session.guidedRetryCounts[card.id] || 0) + 1;
+  document.getElementById("cardTotal").textContent=session.cards.length;
 }
 
 function buildGuidedAlphabetDeck(basePool, size, handoff){
@@ -536,7 +542,8 @@ score:0,
 startTime:Date.now(),
 mode:handoff ? "guided" : practiceMode,
 pool:basePool,
-handoff
+handoff,
+guidedRetryCounts:{}
 };
 
 mistakes=[];
@@ -639,7 +646,10 @@ if(!isCorrect){
 
 updateLetterStats(card,isCorrect);
 if(isCorrect) session.score++;
-else mistakes.push(card);
+else {
+  mistakes.push(card);
+  scheduleGuidedAlphabetRetry(card);
+}
 
 document.getElementById("score").textContent=session.score;
 
@@ -679,6 +689,7 @@ KJT.recordAttempt({
 // ─────────────────────────────────────────────────────────────────────────
 
 mistakes.push(session.cards[session.index]);
+scheduleGuidedAlphabetRetry(session.cards[session.index]);
 session.index++;
 nextCard();
 }
