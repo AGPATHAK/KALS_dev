@@ -82,6 +82,20 @@ This prints:
 - top review items for that app
 - app ranking with simple rule-based scores
 
+Build a bounded Stage 3B reflection packet around that deterministic recommendation:
+
+```bash
+.venv/bin/python pipeline/reflect_recommendation.py --refresh-views
+```
+
+This reflective layer:
+
+- reads only curated analytical summaries plus the deterministic recommendation
+- produces a prompt-ready reflection packet by default
+- can optionally call OpenAI with `--mode openai` when `OPENAI_API_KEY` is available
+- never replaces the rule-based recommendation or handoff
+- can persist reflection runs into `llm_reflection_runs`
+
 Open the browser-side coach hub in the persistent Playwright profile:
 
 ```bash

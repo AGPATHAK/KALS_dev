@@ -89,3 +89,21 @@ CREATE TABLE IF NOT EXISTS replay_evaluation_runs (
 ALTER TABLE replay_evaluation_runs ADD COLUMN IF NOT EXISTS actual_seen_items_json VARCHAR;
 ALTER TABLE replay_evaluation_runs ADD COLUMN IF NOT EXISTS item_seen_count INTEGER;
 ALTER TABLE replay_evaluation_runs ADD COLUMN IF NOT EXISTS item_seen_rate DOUBLE;
+
+CREATE TABLE IF NOT EXISTS llm_reflection_runs (
+  reflection_id VARCHAR PRIMARY KEY,
+  created_at_utc TIMESTAMP NOT NULL,
+  source_db_path VARCHAR NOT NULL,
+  reflection_mode VARCHAR NOT NULL,
+  provider VARCHAR NOT NULL,
+  model VARCHAR,
+  prompt_version VARCHAR NOT NULL,
+  recommended_app VARCHAR,
+  recommendation_contract_version VARCHAR,
+  context_json VARCHAR NOT NULL,
+  prompt_text VARCHAR NOT NULL,
+  output_text VARCHAR,
+  reflection_json VARCHAR,
+  status VARCHAR NOT NULL,
+  error_message VARCHAR
+);

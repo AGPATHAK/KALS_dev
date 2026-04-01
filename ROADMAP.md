@@ -22,7 +22,7 @@ This roadmap is written to serve both goals at once. The Kannada apps are the pr
 
 ## Current Status
 
-Current stage: Stage 3A / 3A.5 milestone complete for the first end-to-end chain, with all four apps validated on the advisory guided-session loop.
+Current stage: Stage 3A / 3A.5 complete for the validated baseline, with Stage 3B now scaffolded as a bounded reflective layer.
 
 Repository status at time of writing:
 
@@ -36,7 +36,8 @@ Repository status at time of writing:
 - All four apps can now consume an advisory handoff through an optional learner-started guided-session path.
 - Guided-session outcomes flow back through the normal telemetry path via `intervention_id`.
 - Whole-chain validation has been completed across `alphabet`, `matras`, `conjuncts`, and `words`.
-- The next active milestone is a lightweight local coach control layer so real practice can refresh recommendations without dropping back into a terminal-only loop.
+- A lightweight local coach control layer now exists so real practice can refresh recommendations without dropping back into a terminal-only loop.
+- Stage 3B now has a first reflective-layer scaffold that reads curated summaries, builds bounded prompts, and can log optional LLM reflections without replacing the deterministic baseline.
 
 ## Roadmap Overview
 

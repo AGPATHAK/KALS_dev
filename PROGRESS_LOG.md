@@ -40,6 +40,7 @@ Append-only session log for resuming work across gaps.
 - A lightweight local coach control server now exists as the next UX layer above the validated pipeline, so the browser can request ingest + recommendation refresh without dropping back into the old stop-and-run-bash loop each time.
 - The smoother practice entrypoint now also has a one-command launcher that starts the local coach control server and opens the coach together.
 - Guided review now uses a smaller focus subset in short handoffs so app-side Leitner-lite spacing can actually resurface weak items instead of filling the whole session with distinct targets.
+- Stage 3B now has an initial reflective-layer scaffold: curated context, bounded prompt construction, optional OpenAI calling, and persistent reflection logging.
 
 ### What Works Now
 
@@ -114,6 +115,11 @@ Append-only session log for resuming work across gaps.
   - start the local coach control server
   - open the coach hub in the persistent Playwright profile
   - shut both down together from one terminal session
+- `pipeline/reflect_recommendation.py` and `pipeline/reflection_logic.py` can now:
+  - build a bounded Stage 3B reflection context from curated learner summaries
+  - generate a prompt-ready reflection packet around the deterministic recommendation
+  - optionally call OpenAI for a non-authoritative reflection note
+  - persist reflection runs in `llm_reflection_runs`
 
 ### Current Replay Signal
 
