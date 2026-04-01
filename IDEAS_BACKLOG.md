@@ -88,3 +88,23 @@ Deferred design ideas that are important, but intentionally not on the current c
 - Why deferred for now:
   The system should first earn a stable decision loop before its tools are standardized.
   MCP will matter more after the recommendation and command contracts are clearer.
+
+### Learner Data Export, Import, and Reset
+
+- Idea:
+  Add explicit controls to export learner data, re-import it later, and wipe it when needed.
+
+- Why it matters:
+  This project is now generating meaningful telemetry, app progress state, and guided-session history across multiple browser storage keys and DuckDB.
+  We should be able to preserve a dataset before experiments, restore it later, or reset everything cleanly when testing from a fresh state.
+
+- What this could enable later:
+  - one-click backup of browser-side training data
+  - reload of a previously exported learner state
+  - safe reset for clean validation runs
+  - easier comparison of "before" and "after" experimental conditions
+  - portability of learner data across machines or browser profiles
+
+- Why deferred for now:
+  The current priority is still validating the first full agent-app chain.
+  Data management is important, but it is a product/ops feature rather than a blocker for the current control-loop milestone.
