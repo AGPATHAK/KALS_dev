@@ -111,6 +111,14 @@ This will:
 - verify the write
 - optionally log the delivery in DuckDB
 
+For chain validation, you can also force a manual handoff for a specific app:
+
+```bash
+.venv/bin/python pipeline/deliver_recommendation_handoff.py --target-app alphabet --focus-item-id alpha.L008 --session-size 5
+```
+
+This is useful when you want to validate the full guided-session loop for a specific app even if the recommender is currently choosing a different one.
+
 Current app-side consumer:
 
 - `alphabet` can now detect a pending advisory handoff on its home screen

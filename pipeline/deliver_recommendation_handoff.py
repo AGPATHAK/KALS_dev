@@ -2,7 +2,6 @@
 
 import argparse
 import json
-from datetime import datetime, timezone
 from pathlib import Path
 
 import duckdb
@@ -13,6 +12,7 @@ from recommendation_logic import (
     SCHEMA_SQL_PATH,
     generate_recommendation,
     make_hash,
+    now_utc_iso,
     refresh_views,
 )
 
@@ -68,11 +68,23 @@ def build_parser() -> argparse.ArgumentParser:
         action="store_true",
         help="Persist the handoff delivery row into the handoff_delivery_runs table.",
     )
+    parser.add_argument(
+        "--target-app",
+        choices=sorted(APP_PAGES.keys()),
+        help="Optionally override the recommender and deliver a manual handoff for a specific app.",
+    )
+    parser.add_argument(
+        "--focus-item-id",
+        action="append",
+        default=[],
+        help="Item ID to include in a manual handoff. Repeat for multiple items.",
+    )
+    parser.add_argument(
+        "--session-size",
+        type=int,
+        help="Session size for a manual handoff.",
+    )
     return parser
-
-
-def now_utc_iso() -> str:
-    return datetime.now(timezone.utc).isoformat()
 
 
 def save_delivery_run(
@@ -139,6 +151,84 @@ def save_delivery_run(
     return delivery_id
 
 
+def fetch_focus_items(
+    conn: duckdb.DuckDBPyConnection,
+    *,
+    app: str,
+    focus_item_ids: list[str],
+) -> list[dict]:
+    if not focus_item_ids:
+        return []
+
+    placeholders = ", ".join(["?"] * len(focus_item_ids))
+    rows = conn.execute(
+        f"""
+        SELECT
+          item_id,
+          MAX(shown_value) AS shown_value,
+          MAX(item_type) AS item_type
+        FROM raw_attempt_events
+        WHERE app = ?
+          AND item_id IN ({placeholders})
+        GROUP BY item_id
+        """,
+        [app, *focus_item_ids],
+    ).fetchall()
+    by_id = {row[0]: {"item_id": row[0], "shown_value": row[1], "item_type": row[2]} for row in rows}
+
+    return [
+        by_id.get(item_id, {"item_id": item_id, "shown_value": item_id, "item_type": None})
+        for item_id in focus_item_ids
+    ]
+
+
+def build_manual_handoff(
+    *,
+    app: str,
+    session_size: int,
+    focus_item_ids: list[str],
+    focus_items: list[dict],
+) -> dict:
+    generated_at_utc = now_utc_iso()
+    handoff_seed = {
+        "contract_version": "kals.recommendation.v1",
+        "target_app": app,
+        "session_size": session_size,
+        "selection_policy": "manual_validation",
+        "focus_item_ids": focus_item_ids,
+        "generated_at_utc": generated_at_utc,
+    }
+    handoff_id = make_hash(json.dumps(handoff_seed, ensure_ascii=False, sort_keys=True))
+    return {
+        "contract_version": "kals.recommendation.v1",
+        "handoff_id": handoff_id,
+        "action": "start_practice_session",
+        "delivery_mode": "advisory",
+        "target_app": app,
+        "target_mode": "recognition",
+        "session_size": session_size,
+        "selection_policy": "manual_validation",
+        "selection_reason": "manual handoff for chain validation",
+        "focus_strategy": "review_candidates_first" if focus_item_ids else "normal_practice",
+        "focus_item_ids": focus_item_ids,
+        "focus_items": focus_items,
+        "top_driver_item_id": focus_item_ids[0] if focus_item_ids else None,
+        "top_driver_shown_value": focus_items[0]["shown_value"] if focus_items else None,
+        "ui_message": (
+            f"Open {app} for a {session_size}-item session and prioritize "
+            f"{len(focus_item_ids)} review item(s)."
+            if focus_item_ids
+            else f"Open {app} for a {session_size}-item session."
+        ),
+        "app_request": {
+            "app": app,
+            "mode": "recognition",
+            "session_size": session_size,
+            "recommended_item_ids": focus_item_ids,
+        },
+    }
+
+
 def main() -> int:
     args = build_parser().parse_args()
     db_path = Path(args.db_path)
@@ -150,12 +240,30 @@ def main() -> int:
 
     conn = duckdb.connect(str(db_path), read_only=True)
     try:
-        payload = generate_recommendation(
-            conn,
-            db_path=db_path,
-            top_items_limit=args.top_items,
-            top_apps_limit=args.top_apps,
-        )
+        if args.target_app:
+            focus_item_ids = list(dict.fromkeys(args.focus_item_id))
+            session_size = args.session_size or (10 if args.target_app == "words" else 5)
+            focus_items = fetch_focus_items(conn, app=args.target_app, focus_item_ids=focus_item_ids)
+            handoff = build_manual_handoff(
+                app=args.target_app,
+                session_size=session_size,
+                focus_item_ids=focus_item_ids,
+                focus_items=focus_items,
+            )
+            payload = {
+                "handoff": handoff,
+                "recommended_app": {
+                    "app": args.target_app,
+                    "recommended_session_size": session_size,
+                },
+            }
+        else:
+            payload = generate_recommendation(
+                conn,
+                db_path=db_path,
+                top_items_limit=args.top_items,
+                top_apps_limit=args.top_apps,
+            )
     finally:
         conn.close()
 

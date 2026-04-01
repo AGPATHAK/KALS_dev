@@ -31,6 +31,7 @@ Append-only session log for resuming work across gaps.
 - Guided-session analytics now exist on top of `intervention_id`, so agent-guided sessions can be measured separately from normal sessions.
 - Guided-session analytics can now compare agent-guided sessions against normal sessions by app.
 - Guided-session evaluation now has its own follow-up report for deciding whether the agent should repeat the same app, continue it, or switch.
+- Handoff delivery can now be manually targeted to a specific app for chain validation, without changing the recommender.
 
 ### What Works Now
 
@@ -81,6 +82,9 @@ Append-only session log for resuming work across gaps.
   - evaluate whether guided focus items were actually surfaced
   - report whether they were cleared or still failing
   - suggest a simple follow-up action per guided session
+- `pipeline/deliver_recommendation_handoff.py` can now:
+  - deliver the normal recommender-selected handoff
+  - or deliver a manual app-targeted handoff for validation runs
 
 ### Current Replay Signal
 
@@ -132,12 +136,14 @@ Deliver the current handoff into the app environment:
 - Guided-session evaluation is still early and depends on creating more real guided-session data.
 - Guided-session comparisons are now possible, but the sample is still too small for strong conclusions.
 - The new follow-up actions are still heuristic and should be treated as evaluation scaffolding, not final policy.
+- Cross-app chain validation is still incomplete until we run real guided sessions in `alphabet`, `matras`, and `conjuncts`.
 
 ### Immediate Next Step
 
 Use the replay output to refine the deterministic rule engine before adding more autonomy. The most likely next changes are:
 
 - generate more real guided-session data in the Playwright profile
+- use manual targeted handoffs to validate guided-session telemetry in `alphabet`, `matras`, and `conjuncts`
 - inspect guided-session performance, focus-item outcomes, and guided-vs-normal comparisons in DuckDB
 - use guided-session evaluation to decide whether the recommender should repeat, continue, or switch after a guided run
 - decide how much of the current handoff contract should become the real app command interface
