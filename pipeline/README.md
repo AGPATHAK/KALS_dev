@@ -109,6 +109,10 @@ This will:
 
 Current app-side consumer:
 
+- `alphabet` can now detect a pending advisory handoff on its home screen
+- `alphabet` shows an `Agent-Guided Session` panel when a valid pending handoff exists
+- starting that guided session prioritizes the recommended letter IDs and then fills the rest of the deck normally
+- the pending handoff is consumed on guided start, while the latest delivered handoff remains available for inspection
 - `words` can now detect a pending advisory handoff on its home screen
 - `words` shows an `Agent-Guided Session` panel when a valid pending handoff exists
 - starting that guided session prioritizes the recommended word IDs and then fills the rest of the deck normally

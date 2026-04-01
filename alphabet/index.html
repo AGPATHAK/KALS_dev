@@ -52,6 +52,25 @@ body { font-family: Inter, system-ui, sans-serif; }
 
 <p id="lastSessionInfo" class="text-slate-600"></p>
 
+<div id="agentHandoffPanel" class="hidden rounded-xl border border-emerald-200 bg-emerald-50 p-4 text-left space-y-3">
+<div class="flex items-start justify-between gap-3">
+  <div>
+    <p class="text-xs font-semibold uppercase tracking-wide text-emerald-700">Agent-Guided Session</p>
+    <p id="agentHandoffMessage" class="text-sm text-slate-700 mt-1"></p>
+    <p id="agentHandoffMeta" class="text-xs text-slate-500 mt-2"></p>
+  </div>
+  <button id="dismissGuidedBtn"
+  class="text-xs text-slate-500 underline hover:text-slate-700">
+  Dismiss
+  </button>
+</div>
+<div id="agentHandoffItems" class="flex flex-wrap gap-2"></div>
+<button id="guidedStartBtn"
+class="w-full py-3 bg-emerald-700 text-white rounded-xl text-base font-semibold hover:bg-emerald-800">
+Start Recommended Session
+</button>
+</div>
+
 <button id="startBtn"
 class="w-full py-4 bg-black text-white rounded-xl text-lg font-semibold hover:bg-slate-800">
 Start Session
@@ -273,6 +292,8 @@ const LETTERS = [
 }));
 
 const STORAGE_KEY="kannada_alphabet_progress_v1";
+const LATEST_HANDOFF_KEY="kals_latest_recommendation_handoff";
+const PENDING_HANDOFF_KEY="kals_pending_recommendation_handoff";
 
 /* ================= STORAGE ================= */
 
@@ -308,6 +329,58 @@ let practiceMode="normal";
 const WEAK_THRESHOLD_DEFAULT=0.99;
 const WEAK_MIN_ATTEMPTS_DEFAULT=8;
 
+function readStorageJson(key){
+  try { return JSON.parse(localStorage.getItem(key) || "null"); } catch { return null; }
+}
+
+function normalizeAlphabetItemId(value){
+  return String(value || "").replace(/^alpha\./, "");
+}
+
+function validateAlphabetHandoff(handoff){
+  if(!handoff || typeof handoff!=="object") return null;
+  if(handoff.contract_version!=="kals.recommendation.v1") return null;
+  if(handoff.action!=="start_practice_session") return null;
+  if(handoff.target_app!=="alphabet") return null;
+  if(handoff.target_mode!=="recognition") return null;
+  if(!handoff.app_request || handoff.app_request.app!=="alphabet") return null;
+  if(!Number.isInteger(handoff.session_size) || handoff.session_size<=0) return null;
+  const recommendedIds=Array.isArray(handoff.app_request.recommended_item_ids)
+    ? handoff.app_request.recommended_item_ids.map(normalizeAlphabetItemId).filter(Boolean)
+    : [];
+  return {
+    ...handoff,
+    app_request:{
+      ...handoff.app_request,
+      recommended_item_ids:recommendedIds
+    }
+  };
+}
+
+function getPendingAlphabetHandoff(){
+  return validateAlphabetHandoff(readStorageJson(PENDING_HANDOFF_KEY));
+}
+
+function clearPendingAlphabetHandoff(){
+  localStorage.removeItem(PENDING_HANDOFF_KEY);
+}
+
+function buildGuidedAlphabetDeck(basePool, size, handoff){
+  const byId=new Map(basePool.map(card=>[card.id, card]));
+  const seen=new Set();
+  const guided=[];
+  (handoff.app_request.recommended_item_ids || []).forEach(id=>{
+    if(seen.has(id)) return;
+    const card=byId.get(id);
+    if(!card) return;
+    seen.add(id);
+    guided.push(card);
+  });
+  if(guided.length>=size) return guided.slice(0,size);
+  const filler=shuffle(basePool.filter(card=>!seen.has(card.id))).slice(0, Math.max(0, size-guided.length));
+  return [...guided, ...filler];
+}
+
 function getWeakCards(basePool, threshold=WEAK_THRESHOLD_DEFAULT, minAttempts=WEAK_MIN_ATTEMPTS_DEFAULT){
   const stats=(progress && progress.letterStats) ? progress.letterStats : {};
   return basePool.filter(l=>{
@@ -342,6 +415,30 @@ function startSession(){
   show("settings");
 }
 
+function renderAgentHandoffPanel(){
+  const handoff=getPendingAlphabetHandoff();
+  const panel=document.getElementById("agentHandoffPanel");
+  if(!handoff){
+    panel.classList.add("hidden");
+    document.getElementById("agentHandoffItems").innerHTML="";
+    return;
+  }
+
+  panel.classList.remove("hidden");
+  document.getElementById("agentHandoffMessage").textContent=
+    handoff.ui_message || `Open alphabet for a ${handoff.session_size}-card recommended session.`;
+  document.getElementById("agentHandoffMeta").textContent=
+    `${handoff.selection_reason || "Agent guidance available"} · ${handoff.session_size} cards`;
+  const focusItems=Array.isArray(handoff.focus_items) ? handoff.focus_items.slice(0,6) : [];
+  document.getElementById("agentHandoffItems").innerHTML=focusItems.length
+    ? focusItems.map(item=>`
+      <span class="kn inline-flex items-center rounded-full bg-white px-3 py-1 text-sm font-semibold text-emerald-800 border border-emerald-200">
+        ${item.shown_value}
+      </span>
+    `).join("")
+    : '<span class="text-xs text-slate-500">No specific focus items attached.</span>';
+}
+
 document.getElementById("startBtn").onclick=()=>{ practiceMode="normal"; startSession(); };
 
 document.getElementById("weakBtn").onclick=()=>{ practiceMode="weak"; startSession(); };
@@ -349,19 +446,31 @@ document.getElementById("viewStatsBtn").onclick=()=>{
 renderStats();
 show("stats");
 };
+document.getElementById("guidedStartBtn").onclick=()=>{
+  const handoff=getPendingAlphabetHandoff();
+  if(!handoff){
+    renderAgentHandoffPanel();
+    return;
+  }
+  beginConfiguredSession({ handoff });
+};
+document.getElementById("dismissGuidedBtn").onclick=()=>{
+  clearPendingAlphabetHandoff();
+  renderAgentHandoffPanel();
+};
 
-document.getElementById("beginSession").onclick=()=>{
-const subset=document.querySelector('input[name="subset"]:checked').value;
-const countSelect=document.getElementById("cardCount").value;
+function beginConfiguredSession(options={}){
+const handoff=validateAlphabetHandoff(options.handoff || null);
+const subset=handoff ? "all" : document.querySelector('input[name="subset"]:checked').value;
+const countSelect=handoff ? String(handoff.session_size) : document.getElementById("cardCount").value;
 const timer=Number(document.getElementById("timerSelect").value);
 
 let basePool=LETTERS;
 if(subset==="vowel") basePool=basePool.filter(l=>l.group==="vowel");
 if(subset==="consonant") basePool=basePool.filter(l=>l.group!=="vowel");
 
-// In weak mode we practice a targeted card list, but keep full basePool for distractor options.
 let cardPool=basePool;
-if(practiceMode==="weak"){
+if(!handoff && practiceMode==="weak"){
   const weakCards=getWeakCards(basePool);
   if(weakCards.length===0){
     alert("No weak letters found yet (needs a bit more history). Try a normal session first, or lower the threshold in code defaults.");
@@ -371,7 +480,9 @@ if(practiceMode==="weak"){
 }
 
 let cards;
-if(countSelect==="full") cards=shuffle(cardPool);
+if(handoff){
+  cards=buildGuidedAlphabetDeck(basePool, Math.min(handoff.session_size, basePool.length), handoff);
+}else if(countSelect==="full") cards=shuffle(cardPool);
 else cards=shuffle(cardPool).slice(0,Number(countSelect));
 
 session={
@@ -381,21 +492,22 @@ timer,
 index:0,
 score:0,
 startTime:Date.now(),
-mode:practiceMode,
-pool:basePool
+mode:handoff ? "guided" : practiceMode,
+pool:basePool,
+handoff
 };
 
 mistakes=[];
 document.getElementById("cardTotal").textContent=cards.length;
 document.getElementById("score").textContent=0;
+if(handoff) clearPendingAlphabetHandoff();
 
-// ── KJT: start of session ──────────────────────────────────────────────────
 KJT.startSession();
-// ──────────────────────────────────────────────────────────────────────────
-
 show("play");
 nextCard();
-};
+}
+
+document.getElementById("beginSession").onclick=()=>{ beginConfiguredSession(); };
 
 // ── KJT: capture card shown time ──────────────────────────────────────────
 let _kjtCardShownAt = 0;
@@ -454,7 +566,8 @@ KJT.recordAttempt({
   result:         isCorrect ? 'pass' : 'fail',
   response_time_ms: Math.round(performance.now() - _kjtCardShownAt),
   distractor_mode: null,
-  difficulty:     null
+  difficulty:     null,
+  intervention_id: session?.handoff?.handoff_id || null
 });
 // ─────────────────────────────────────────────────────────────────────────
 
@@ -518,7 +631,8 @@ KJT.recordAttempt({
   result:         'fail',
   response_time_ms: Math.round(session.timer * 1000),
   distractor_mode: null,
-  difficulty:     null
+  difficulty:     null,
+  intervention_id: session?.handoff?.handoff_id || null
 });
 // ─────────────────────────────────────────────────────────────────────────
 
@@ -562,6 +676,7 @@ list.appendChild(li);
 recordSession(total,accuracy);
 saveProgress(progress);
 renderDashboard();
+renderAgentHandoffPanel();
 }
 
 function recordSession(total,accuracy){
@@ -622,6 +737,8 @@ document.getElementById("lastSessionInfo").textContent=
 progress.sessions.length>0?
 `Last session: ${progress.sessions[0].score}/${progress.sessions[0].total}`:
 "";
+
+renderAgentHandoffPanel();
 }
 
 function formatSessionDate(isoString){
