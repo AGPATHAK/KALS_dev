@@ -523,6 +523,42 @@ function clearPendingWordsHandoff() {
   localStorage.removeItem(PENDING_HANDOFF_KEY);
 }
 
+function buildLeitnerLiteGuidedDeck(pool, size, focusWords, prog) {
+  const focus = focusWords.filter(Boolean);
+  if (!focus.length) return weightedSample(pool, Math.min(size, pool.length), prog);
+
+  const maxRounds = size >= focus.length * 3 ? 3 : size >= focus.length * 2 ? 2 : 1;
+  const repeatedFocus = [];
+  for (let round = 0; round < maxRounds; round++) repeatedFocus.push(...focus);
+
+  const focusPlacements = repeatedFocus.slice(0, size);
+  const queue = new Array(size).fill(null);
+  const fillerPool = pool.filter(word => !focus.some(f => f.id === word.id));
+  const filler = weightedSample(fillerPool, Math.min(size, fillerPool.length), prog);
+
+  focusPlacements.forEach((word, index) => {
+    const target = Math.floor(((index + 1) * (size + 1)) / (focusPlacements.length + 1)) - 1;
+    let slot = Math.max(0, Math.min(size - 1, target));
+    let offset = 0;
+    while (offset < size) {
+      const candidates = [slot + offset, slot - offset];
+      const found = candidates.find(pos => pos >= 0 && pos < size && queue[pos] === null);
+      if (found !== undefined) {
+        queue[found] = word;
+        return;
+      }
+      offset += 1;
+    }
+  });
+
+  let fillerIndex = 0;
+  for (let i = 0; i < queue.length; i++) {
+    if (queue[i]) continue;
+    queue[i] = filler[fillerIndex++] || focus[i % focus.length];
+  }
+  return queue;
+}
+
 function buildGuidedDeck(handoff, size, prog) {
   const byId = new Map(WORDS.map(w => [w.id, w]));
   const seen = new Set();
@@ -535,16 +571,7 @@ function buildGuidedDeck(handoff, size, prog) {
     seen.add(id);
     focusWords.push(word);
   });
-
-  if (focusWords.length >= size) return focusWords.slice(0, size);
-
-  const remainingPool = WORDS.filter(w => !seen.has(w.id));
-  const extra = weightedSample(
-    remainingPool,
-    Math.min(size - focusWords.length, remainingPool.length),
-    prog
-  );
-  return [...focusWords, ...extra];
+  return buildLeitnerLiteGuidedDeck(WORDS, size, focusWords, prog);
 }
 
 /* ══════════════════════════════════════════

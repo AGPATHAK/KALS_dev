@@ -454,6 +454,41 @@
     localStorage.removeItem(PENDING_HANDOFF_KEY);
   }
 
+  function buildLeitnerLiteGuidedQueue(pool, size, focusRows, getId){
+    const focus = focusRows.filter(Boolean);
+    if(!focus.length) return shuffle([...pool]).slice(0, size);
+
+    const maxRounds = size >= focus.length * 3 ? 3 : size >= focus.length * 2 ? 2 : 1;
+    const repeatedFocus = [];
+    for(let round = 0; round < maxRounds; round++) repeatedFocus.push(...focus);
+
+    const focusPlacements = repeatedFocus.slice(0, size);
+    const queue = new Array(size).fill(null);
+    const filler = shuffle(pool.filter(row => !focus.some(f => getId(f) === getId(row))));
+
+    focusPlacements.forEach((row, index) => {
+      const target = Math.floor(((index + 1) * (size + 1)) / (focusPlacements.length + 1)) - 1;
+      let slot = Math.max(0, Math.min(size - 1, target));
+      let offset = 0;
+      while(offset < size){
+        const candidates = [slot + offset, slot - offset];
+        const found = candidates.find(pos => pos >= 0 && pos < size && queue[pos] === null);
+        if(found !== undefined){
+          queue[found] = row;
+          return;
+        }
+        offset += 1;
+      }
+    });
+
+    let fillerIndex = 0;
+    for(let i = 0; i < queue.length; i++){
+      if(queue[i]) continue;
+      queue[i] = filler[fillerIndex++] || focus[i % focus.length];
+    }
+    return queue;
+  }
+
   // ── Card building ─────────────────────────────────────────────
   // Distractors: prefer same-group (same first consonant) options;
   // fall back to any pool options if not enough.
@@ -494,9 +529,7 @@
       seen.add(String(row.id));
       guided.push(row);
     });
-    if(guided.length >= size) return guided.slice(0, size);
-    const filler = shuffle(pool.filter(row => !seen.has(String(row.id)))).slice(0, Math.max(0, size - guided.length));
-    return [...guided, ...filler];
+    return buildLeitnerLiteGuidedQueue(pool, size, guided, row => String(row.id));
   }
 
   // ── Session engine ────────────────────────────────────────────
