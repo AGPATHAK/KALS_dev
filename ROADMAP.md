@@ -36,6 +36,7 @@ Repository status at time of writing:
 - All four apps can now consume an advisory handoff through an optional learner-started guided-session path.
 - Guided-session outcomes flow back through the normal telemetry path via `intervention_id`.
 - Whole-chain validation has been completed across `alphabet`, `matras`, `conjuncts`, and `words`.
+- The next active milestone is a lightweight local coach control layer so real practice can refresh recommendations without dropping back into a terminal-only loop.
 
 ## Roadmap Overview
 

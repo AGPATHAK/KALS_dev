@@ -37,6 +37,7 @@ Append-only session log for resuming work across gaps.
 - The first full end-to-end chain is now validated across all four apps.
 - A browser-side coach hub now exists as the first non-terminal control surface for launching recommended practice.
 - The practice flow is now smoother: the coach opens apps in new tabs, shows the post-practice pipeline commands, and every app exposes a direct `Coach Hub` return shortcut in its header.
+- A lightweight local coach control server now exists as the next UX layer above the validated pipeline, so the browser can request ingest + recommendation refresh without dropping back into the old stop-and-run-bash loop each time.
 
 ### What Works Now
 
@@ -96,10 +97,16 @@ Append-only session log for resuming work across gaps.
   - show the recommended app and focus items
   - launch the recommended app from the browser without using bash for each app start
   - open any app directly for normal practice
+  - call a local coach control server to ingest browser events and refresh the next recommendation in place
 - `pipeline/deliver_recommendation_handoff.py` can now:
   - deliver the normal recommender-selected handoff
   - or deliver a manual app-targeted handoff for validation runs
   - automatically persist manual validation handoffs into `handoff_delivery_runs`
+- `pipeline/coach_control_server.py` can now:
+  - accept browser-side `kjt_events` over a local HTTP endpoint
+  - ingest them into DuckDB without reopening the Playwright profile
+  - recompute the deterministic recommendation
+  - persist recommendation and delivery rows for the refreshed handoff
 
 ### Current Replay Signal
 
@@ -153,15 +160,15 @@ Deliver the current handoff into the app environment:
 - The new follow-up actions are still heuristic and should be treated as evaluation scaffolding, not final policy.
 - Cross-app chain validation is now complete for the first-pass advisory loop.
 - Future work should treat this validated chain as the baseline and avoid changing too many moving pieces at once.
-- Recommendation generation and ingest still require the Python pipeline; the coach hub is currently a launcher surface, not a full local control plane.
+- Recommendation refresh is smoother now, but it depends on keeping the local coach control server running in a separate terminal during practice.
 
 ### Immediate Next Step
 
-Use the replay output to refine the deterministic rule engine before adding more autonomy. The most likely next changes are:
+Use the smoother coach-led refresh loop to generate more natural real-practice data before major recommender refinements. The most likely next changes are:
 
-- use guided-session performance, focus-item outcomes, and guided-vs-normal comparisons to refine the recommender
+- keep testing the local coach control path during real practice
+- use guided-session performance, focus-item outcomes, and guided-vs-normal comparisons to refine the recommender once the real-practice sample is less toy-like
 - keep major refinements deferred unless they are needed to interpret the validated chain
-- use the coach hub during real practice to generate more natural live data
 - decide how much of the current handoff contract should become the real app command interface
 
 ### Relevant Commits

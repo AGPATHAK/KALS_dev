@@ -76,6 +76,9 @@
       <p id="recommendation-note" class="text-sm text-slate-500">
         The recommended session opens in a new tab so this hub stays available while you practice.
       </p>
+      <div id="refresh-status"
+        class="hidden rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-600">
+      </div>
     </section>
 
     <section class="bg-white rounded-3xl shadow-soft p-6 md:p-8 space-y-5">
@@ -110,13 +113,17 @@
     <section class="bg-white rounded-3xl shadow-soft p-6 md:p-8 space-y-5">
       <div>
         <p class="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">After Practice</p>
-        <h2 class="text-xl font-bold mt-2">Run These Commands</h2>
+        <h2 class="text-xl font-bold mt-2">Refresh The Coach</h2>
         <p class="text-sm text-slate-600 mt-2">
-          After you finish a practice tab and stop the Playwright launcher with <span class="font-semibold">Ctrl+C</span>, run these in the terminal to ingest the latest data and refresh the next recommendation.
+          Best experience: start the local coach control server once in a separate terminal, then use the <span class="font-semibold">Refresh Recommendation</span> button above after each practice run. If that helper is not running, use the fallback commands below.
         </p>
       </div>
 
       <div class="grid gap-4">
+        <div class="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+          <div class="text-xs uppercase tracking-wide text-slate-500 mb-2">Start Once Per Practice Block</div>
+          <pre class="overflow-x-auto text-sm text-slate-800"><code>.venv/bin/python pipeline/coach_control_server.py</code></pre>
+        </div>
         <div class="rounded-2xl border border-slate-200 bg-slate-50 p-4">
           <div class="text-xs uppercase tracking-wide text-slate-500 mb-2">Ingest Latest Practice Data</div>
           <pre class="overflow-x-auto text-sm text-slate-800"><code>.venv/bin/python pipeline/ingest_events.py</code></pre>
@@ -145,6 +152,7 @@
     (() => {
       const LATEST_HANDOFF_KEY = "kals_latest_recommendation_handoff";
       const PENDING_HANDOFF_KEY = "kals_pending_recommendation_handoff";
+      const CONTROL_API_BASE = "http://127.0.0.1:8765";
       const APP_PATHS = {
         alphabet: "../alphabet/index.html",
         matras: "../matras/index.html",
@@ -158,6 +166,59 @@
 
       function appHref(app) {
         return new URL(APP_PATHS[app], window.location.href).href;
+      }
+
+      function setRefreshStatus(message, tone = "neutral") {
+        const el = document.getElementById("refresh-status");
+        if (!message) {
+          el.className = "hidden rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-600";
+          el.textContent = "";
+          return;
+        }
+        const classes = {
+          neutral: "rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-600",
+          success: "rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800",
+          error: "rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700",
+        };
+        el.className = classes[tone] || classes.neutral;
+        el.textContent = message;
+      }
+
+      async function refreshViaControlPlane() {
+        const refreshBtn = document.getElementById("refresh-btn");
+        refreshBtn.disabled = true;
+        setRefreshStatus("Refreshing recommendation from the local coach service...", "neutral");
+        try {
+          const events = readJson("kjt_events") || [];
+          const response = await fetch(`${CONTROL_API_BASE}/refresh`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ events }),
+          });
+          const payload = await response.json();
+          if (!response.ok || !payload.ok) {
+            throw new Error(payload.error || "Coach refresh failed");
+          }
+
+          if (payload.recommendation?.handoff) {
+            localStorage.setItem(LATEST_HANDOFF_KEY, JSON.stringify(payload.recommendation.handoff));
+            localStorage.setItem(PENDING_HANDOFF_KEY, JSON.stringify(payload.recommendation.handoff));
+          }
+
+          renderRecommendation();
+          const summary = payload.ingest_summary || {};
+          setRefreshStatus(
+            `Updated coach recommendation. Inserted ${summary.inserted || 0} new event(s) and skipped ${summary.duplicates || 0} duplicate(s).`,
+            "success"
+          );
+        } catch (error) {
+          setRefreshStatus(
+            "Live refresh could not reach the local coach service. Start `.venv/bin/python pipeline/coach_control_server.py` or use the fallback terminal commands below.",
+            "error"
+          );
+        } finally {
+          refreshBtn.disabled = false;
+        }
       }
 
       function renderFocusItems(items) {
@@ -221,10 +282,11 @@
         renderFocusItems(active.focus_items || []);
       }
 
-      document.getElementById("refresh-btn").addEventListener("click", renderRecommendation);
+      document.getElementById("refresh-btn").addEventListener("click", refreshViaControlPlane);
       document.getElementById("clear-pending-btn").addEventListener("click", () => {
         localStorage.removeItem(PENDING_HANDOFF_KEY);
         renderRecommendation();
+        setRefreshStatus("Cleared the pending recommendation from browser storage.", "neutral");
       });
       document.getElementById("start-recommended-btn").addEventListener("click", (event) => {
         const app = event.currentTarget.dataset.targetApp;

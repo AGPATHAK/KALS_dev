@@ -258,6 +258,74 @@ def selected_pages(app_names: Optional[Iterable[str]]) -> List[Tuple[str, Path]]
     return [(name, APP_PAGES[name]) for name in names]
 
 
+def ingest_events_to_connection(
+    conn: duckdb.DuckDBPyConnection,
+    *,
+    events: Iterable[Dict],
+    source_page: str,
+    seen_event_uids: Optional[set] = None,
+) -> Dict[str, int]:
+    seen = seen_event_uids if seen_event_uids is not None else existing_event_uids(conn)
+    inserted = 0
+    duplicates = 0
+    issues = 0
+
+    for event in events:
+        raw_event_json = json.dumps(event, ensure_ascii=False, sort_keys=True)
+        event_uid = make_event_uid(event)
+
+        if event_uid in seen:
+            duplicates += 1
+            continue
+
+        event_issues = validate_event(event)
+        if event_issues:
+            issues += 1
+            for issue_code, issue_message in event_issues:
+                insert_validation_issue(
+                    conn,
+                    event_uid=event_uid,
+                    source_page=source_page,
+                    issue_code=issue_code,
+                    issue_message=issue_message,
+                    raw_event_json=raw_event_json,
+                )
+            continue
+
+        insert_raw_event(
+            conn,
+            event_uid=event_uid,
+            event=event,
+            source_page=source_page,
+            raw_event_json=raw_event_json,
+        )
+        seen.add(event_uid)
+        inserted += 1
+
+    return {
+        "inserted": inserted,
+        "duplicates": duplicates,
+        "issues": issues,
+    }
+
+
+def ingest_events_batch(
+    *,
+    db_path: Path,
+    events: Iterable[Dict],
+    source_page: str,
+) -> Dict[str, int]:
+    conn = duckdb.connect(str(db_path))
+    try:
+        conn.execute(load_schema_sql())
+        result = ingest_events_to_connection(conn, events=events, source_page=source_page)
+        result["total_raw"] = conn.execute("SELECT COUNT(*) FROM raw_attempt_events").fetchone()[0]
+        result["total_issues"] = conn.execute("SELECT COUNT(*) FROM validation_issues").fetchone()[0]
+        return result
+    finally:
+        conn.close()
+
+
 def main() -> int:
     parser = build_parser()
     args = parser.parse_args()
@@ -284,38 +352,15 @@ def main() -> int:
         print(f"\nReading localStorage via Playwright from {app_name}: {page_path}")
         events = fetch_events_from_page(page_path, headless=not args.headful, profile_dir=profile_dir)
         print(f"Fetched {len(events)} raw event(s)")
-
-        for event in events:
-            raw_event_json = json.dumps(event, ensure_ascii=False, sort_keys=True)
-            event_uid = make_event_uid(event)
-
-            if event_uid in seen:
-                duplicates += 1
-                continue
-
-            event_issues = validate_event(event)
-            if event_issues:
-                issues += 1
-                for issue_code, issue_message in event_issues:
-                    insert_validation_issue(
-                        conn,
-                        event_uid=event_uid,
-                        source_page=app_name,
-                        issue_code=issue_code,
-                        issue_message=issue_message,
-                        raw_event_json=raw_event_json,
-                    )
-                continue
-
-            insert_raw_event(
-                conn,
-                event_uid=event_uid,
-                event=event,
-                source_page=app_name,
-                raw_event_json=raw_event_json,
-            )
-            seen.add(event_uid)
-            inserted += 1
+        page_result = ingest_events_to_connection(
+            conn,
+            events=events,
+            source_page=app_name,
+            seen_event_uids=seen,
+        )
+        inserted += page_result["inserted"]
+        duplicates += page_result["duplicates"]
+        issues += page_result["issues"]
 
     total_raw = conn.execute("SELECT COUNT(*) FROM raw_attempt_events").fetchone()[0]
     total_issues = conn.execute("SELECT COUNT(*) FROM validation_issues").fetchone()[0]

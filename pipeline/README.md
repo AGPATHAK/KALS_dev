@@ -11,6 +11,7 @@ Current milestone status:
 - the first end-to-end advisory guided-session chain is now validated across all four apps
 - recommendation -> handoff delivery -> app consumption -> telemetry return -> evaluation is working end to end
 - a browser-side coach hub now lets you launch the recommended app without using bash for each practice start
+- a lightweight local coach control server can now refresh recommendations directly from the browser during real practice
 
 ## Install
 
@@ -94,6 +95,21 @@ The coach hub can:
 - open any practice app directly for normal use in a new tab
 - keep the coach hub available while you practice
 - reduce the need to trigger app launches from bash during real practice
+
+For a smoother real-practice loop, start the local coach control server in a separate terminal:
+
+```bash
+.venv/bin/python pipeline/coach_control_server.py
+```
+
+When that server is running, the coach hub `Refresh Recommendation` button will:
+
+- ingest the current browser-side `kjt_events` directly into DuckDB
+- recompute the deterministic recommendation
+- save recommendation and delivery rows
+- update the pending/latest handoff in browser storage without terminating the browser session
+
+If the server is not running, the coach hub still shows the fallback terminal commands for the validated manual refresh path.
 
 Structured JSON output:
 
