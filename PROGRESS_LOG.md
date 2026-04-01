@@ -35,6 +35,7 @@ Append-only session log for resuming work across gaps.
 - Manual targeted handoffs now save delivery rows automatically, so guided-session evaluation can reconstruct their focus items without needing `--save-run`.
 - Whole-chain validation now has its own report for checking which apps are fully validated and which still need one more clean guided run.
 - The first full end-to-end chain is now validated across all four apps.
+- A browser-side coach hub now exists as the first non-terminal control surface for launching recommended practice.
 
 ### What Works Now
 
@@ -89,6 +90,11 @@ Append-only session log for resuming work across gaps.
   - report guided-session validation coverage by app
   - distinguish fully validated apps from apps with only partial guided evidence
   - confirm when all four apps have completed the same first-pass guided-session loop
+- `coach/index.html` can now:
+  - read the pending/latest recommendation handoff from browser storage
+  - show the recommended app and focus items
+  - launch the recommended app from the browser without using bash for each app start
+  - open any app directly for normal practice
 - `pipeline/deliver_recommendation_handoff.py` can now:
   - deliver the normal recommender-selected handoff
   - or deliver a manual app-targeted handoff for validation runs
@@ -146,6 +152,7 @@ Deliver the current handoff into the app environment:
 - The new follow-up actions are still heuristic and should be treated as evaluation scaffolding, not final policy.
 - Cross-app chain validation is now complete for the first-pass advisory loop.
 - Future work should treat this validated chain as the baseline and avoid changing too many moving pieces at once.
+- Recommendation generation and ingest still require the Python pipeline; the coach hub is currently a launcher surface, not a full local control plane.
 
 ### Immediate Next Step
 
@@ -153,6 +160,7 @@ Use the replay output to refine the deterministic rule engine before adding more
 
 - use guided-session performance, focus-item outcomes, and guided-vs-normal comparisons to refine the recommender
 - keep major refinements deferred unless they are needed to interpret the validated chain
+- use the coach hub during real practice to generate more natural live data
 - decide how much of the current handoff contract should become the real app command interface
 
 ### Relevant Commits

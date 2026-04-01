@@ -10,6 +10,7 @@ from playwright.sync_api import sync_playwright
 REPO_ROOT = Path(__file__).resolve().parent.parent
 DEFAULT_PROFILE_DIR = REPO_ROOT / ".playwright-profile"
 APP_PAGES = {
+    "coach": REPO_ROOT / "coach" / "index.html",
     "alphabet": REPO_ROOT / "alphabet" / "index.html",
     "matras": REPO_ROOT / "matras" / "index.html",
     "conjuncts": REPO_ROOT / "conjuncts" / "index.html",

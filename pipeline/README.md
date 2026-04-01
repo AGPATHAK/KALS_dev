@@ -10,6 +10,7 @@ Current milestone status:
 
 - the first end-to-end advisory guided-session chain is now validated across all four apps
 - recommendation -> handoff delivery -> app consumption -> telemetry return -> evaluation is working end to end
+- a browser-side coach hub now lets you launch the recommended app without using bash for each practice start
 
 ## Install
 
@@ -79,6 +80,19 @@ This prints:
 - handoff contract details for a future app-facing integration
 - top review items for that app
 - app ranking with simple rule-based scores
+
+Open the browser-side coach hub in the persistent Playwright profile:
+
+```bash
+.venv/bin/python pipeline/open_app.py coach
+```
+
+The coach hub can:
+
+- show the current pending or latest recommendation
+- launch the recommended app from the browser
+- open any practice app directly for normal use
+- reduce the need to trigger app launches from bash during real practice
 
 Structured JSON output:
 
@@ -226,6 +240,12 @@ To create data that the Stage 2 pipeline can read reliably, open an app through 
 
 ```bash
 .venv/bin/python pipeline/open_app.py alphabet
+```
+
+Or open the coach hub first and launch apps from there:
+
+```bash
+.venv/bin/python pipeline/open_app.py coach
 ```
 
 Then practice in that browser window. When you are done:
