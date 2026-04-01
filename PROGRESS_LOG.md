@@ -27,6 +27,7 @@ Append-only session log for resuming work across gaps.
 - `words` now has the first optional app-side consumption path for that advisory handoff.
 - `alphabet` now also has an optional app-side consumption path for the same advisory handoff pattern.
 - `matras` now also has an optional app-side consumption path for the same advisory handoff pattern.
+- `conjuncts` now also has an optional app-side consumption path for the same advisory handoff pattern.
 
 ### What Works Now
 
@@ -54,6 +55,11 @@ Append-only session log for resuming work across gaps.
 - `matras/index.html` can:
   - surface a pending handoff as an `Agent-Guided Session` panel on the home screen
   - start a guided session that prioritizes delivered matra IDs before filling the rest of the deck
+  - consume the pending handoff on guided start
+  - attach the delivered `handoff_id` to telemetry as `intervention_id`
+- `conjuncts/index.html` can:
+  - surface a pending handoff as an `Agent-Guided Session` panel on the home screen
+  - start a guided session that prioritizes delivered conjunct IDs before filling the rest of the deck
   - consume the pending handoff on guided start
   - attach the delivered `handoff_id` to telemetry as `intervention_id`
 - `pipeline/replay_evaluate.py` can:
@@ -110,7 +116,7 @@ Deliver the current handoff into the app environment:
 - The current rule engine over-favors `alphabet` on this dataset.
 - Replay is now slightly softer than before, but it still does not capture concept-level transfer across apps.
 - The apps still do not consume the delivered handoff automatically; the bridge currently writes advisory data only.
-- `conjuncts` still does not consume the delivered handoff yet.
+- All four apps now support optional advisory handoff consumption, but the handoff is still learner-started rather than automatically enforced.
 
 ### Immediate Next Step
 
@@ -118,7 +124,7 @@ Use the replay output to refine the deterministic rule engine before adding more
 
 - make item-level recommendation hits more meaningful for repeated review sessions
 - decide how much of the current handoff contract should become the real app command interface
-- extend the app-side consumption path to `conjuncts`
+- evaluate whether the current optional guided-session pattern should remain app-specific or be unified more explicitly
 - decide whether replay should also score partial success when the right app was chosen but the exact recommended item did not appear
 
 ### Relevant Commits

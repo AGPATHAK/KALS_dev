@@ -61,6 +61,25 @@
       <div id="quick-stats" class="grid grid-cols-3 gap-4"></div>
       <p id="last-session-info" class="text-slate-600"></p>
 
+      <div id="agent-handoff-panel" class="hidden rounded-xl border border-emerald-200 bg-emerald-50 p-4 text-left space-y-3">
+        <div class="flex items-start justify-between gap-3">
+          <div>
+            <p class="text-xs font-semibold uppercase tracking-wide text-emerald-700">Agent-Guided Session</p>
+            <p id="agent-handoff-message" class="text-sm text-slate-700 mt-1"></p>
+            <p id="agent-handoff-meta" class="text-xs text-slate-500 mt-2"></p>
+          </div>
+          <button id="dismiss-guided-btn"
+            class="text-xs text-slate-500 underline hover:text-slate-700">
+            Dismiss
+          </button>
+        </div>
+        <div id="agent-handoff-items" class="flex flex-wrap gap-2"></div>
+        <button id="guided-start-btn"
+          class="w-full py-3 bg-emerald-700 text-white rounded-xl text-base font-semibold hover:bg-emerald-800">
+          Start Recommended Session
+        </button>
+      </div>
+
       <div class="grid sm:grid-cols-2 gap-4 text-left">
         <div>
           <label class="block text-sm font-medium mb-2">Number of Cards</label>
@@ -382,6 +401,7 @@
   }
 
   const WEAK = { minAttempts:8, threshold:0.99 };
+  const PENDING_HANDOFF_KEY = 'kals_pending_recommendation_handoff';
 
   function isWeak(row, progress){
     const st = progress.itemStats?.[String(row.id)];
@@ -389,6 +409,42 @@
     const attempts = Number(st.attempts||0);
     if(attempts < WEAK.minAttempts) return false;
     return (Number(st.correct||0)/attempts) < WEAK.threshold;
+  }
+
+  function readStorageJson(key){
+    try { return JSON.parse(localStorage.getItem(key) || 'null'); } catch { return null; }
+  }
+
+  function normalizeConjunctItemId(value){
+    return String(value || '').replace(/^conjunct\./, '');
+  }
+
+  function validateConjunctHandoff(handoff){
+    if(!handoff || typeof handoff !== 'object') return null;
+    if(handoff.contract_version !== 'kals.recommendation.v1') return null;
+    if(handoff.action !== 'start_practice_session') return null;
+    if(handoff.target_app !== 'conjuncts') return null;
+    if(handoff.target_mode !== 'recognition') return null;
+    if(!handoff.app_request || handoff.app_request.app !== 'conjuncts') return null;
+    if(!Number.isInteger(handoff.session_size) || handoff.session_size <= 0) return null;
+    const recommendedIds = Array.isArray(handoff.app_request.recommended_item_ids)
+      ? handoff.app_request.recommended_item_ids.map(normalizeConjunctItemId).filter(Boolean)
+      : [];
+    return {
+      ...handoff,
+      app_request: {
+        ...handoff.app_request,
+        recommended_item_ids: recommendedIds
+      }
+    };
+  }
+
+  function getPendingConjunctHandoff(){
+    return validateConjunctHandoff(readStorageJson(PENDING_HANDOFF_KEY));
+  }
+
+  function clearPendingConjunctHandoff(){
+    localStorage.removeItem(PENDING_HANDOFF_KEY);
   }
 
   // ── Card building ─────────────────────────────────────────────
@@ -421,6 +477,21 @@
     return String(id).replace(/^JK/, 'C');
   }
 
+  function buildGuidedConjunctQueue(pool, size, handoff){
+    const byCanonicalId = new Map(pool.map(row => [canonicalConjunctId(row.id), row]));
+    const seen = new Set();
+    const guided = [];
+    (handoff.app_request.recommended_item_ids || []).forEach(id => {
+      const row = byCanonicalId.get(String(id));
+      if(!row || seen.has(String(row.id))) return;
+      seen.add(String(row.id));
+      guided.push(row);
+    });
+    if(guided.length >= size) return guided.slice(0, size);
+    const filler = shuffle(pool.filter(row => !seen.has(String(row.id)))).slice(0, Math.max(0, size - guided.length));
+    return [...guided, ...filler];
+  }
+
   // ── Session engine ────────────────────────────────────────────
   const timerRing   = qs('#timer-ring');
   const elPrompt    = qs('#prompt');
@@ -434,16 +505,47 @@
 
   let session = null, tHandle = null, lastStartTs = 0, isLocked = false, sessionAlive = false;
 
-  function startSession({ fromMistakesOnly=false, weakOnly=false } = {}){
+  function renderAgentHandoffPanel(){
+    const handoff = getPendingConjunctHandoff();
+    const panel = qs('#agent-handoff-panel');
+    const itemsEl = qs('#agent-handoff-items');
+    if(!panel || !itemsEl) return;
+    if(!handoff){
+      panel.classList.add('hidden');
+      itemsEl.innerHTML = '';
+      return;
+    }
+
+    panel.classList.remove('hidden');
+    qs('#agent-handoff-message').textContent =
+      handoff.ui_message || `Open conjuncts for a ${handoff.session_size}-card recommended session.`;
+    qs('#agent-handoff-meta').textContent =
+      `${handoff.selection_reason || 'Agent guidance available'} · ${handoff.session_size} cards`;
+    const focusItems = Array.isArray(handoff.focus_items) ? handoff.focus_items.slice(0, 6) : [];
+    itemsEl.innerHTML = focusItems.length
+      ? focusItems.map(item => `
+        <span class="kn inline-flex items-center rounded-full bg-white px-3 py-1 text-sm font-semibold text-emerald-800 border border-emerald-200">
+          ${escapeHtml(item.shown_value)}
+        </span>
+      `).join('')
+      : '<span class="text-xs text-slate-500">No specific focus items attached.</span>';
+  }
+
+  function startSession({ fromMistakesOnly=false, weakOnly=false, handoff=null } = {}){
     sessionAlive = true;
+    handoff = validateConjunctHandoff(handoff);
     const s = Settings.save();
     const progress = ProgressStore.get();
     let pool = [...EMBEDDED_DECK];
 
+    if(handoff){
+      fromMistakesOnly = false;
+      weakOnly = false;
+    }
     if(fromMistakesOnly && session?.mistakes?.length){
       pool = session.mistakes.map(m => m.row);
     }
-    if(weakOnly){
+    if(!handoff && weakOnly){
       pool = pool.filter(r => isWeak(r, progress));
       if(!pool.length){
         alert(`No weak conjuncts yet. Need ≥${WEAK.minAttempts} attempts and accuracy <99%. Keep practicing first!`);
@@ -452,18 +554,22 @@
     }
     if(!pool.length){ alert('No cards found.'); return; }
 
-    const count = Math.min(Math.max(1, Number(s.cardsCount)||20), pool.length);
-    const queue = shuffle([...pool]).slice(0, count);
+    const count = Math.min(handoff ? handoff.session_size : Math.max(1, Number(s.cardsCount)||20), pool.length);
+    const queue = handoff
+      ? buildGuidedConjunctQueue(pool, count, handoff)
+      : shuffle([...pool]).slice(0, count);
 
     session = {
       idx:0, total:queue.length, score:0,
       mistakes:[], times:[],
       timerSec: Number(s.timerSec)||6,
       current:null, pool, queue,
-      label: fromMistakesOnly ? 'Retry mistakes' : weakOnly ? 'Weak conjuncts' : 'Mixed deck'
+      label: handoff ? 'Agent-guided review' : (fromMistakesOnly ? 'Retry mistakes' : weakOnly ? 'Weak conjuncts' : 'Mixed deck'),
+      handoff
     };
     elCardTotal.textContent = String(session.total);
     elScore.textContent = '0';
+    if(handoff) clearPendingConjunctHandoff();
     KJT.startSession();
     show('play');
     renderNext();
@@ -527,6 +633,7 @@
       response_time_ms:  Math.round(performance.now() - lastStartTs),
       distractor_mode:   null,
       difficulty:        null,
+      intervention_id:   session?.handoff?.handoff_id || null,
     });
 
     const buttons = qsa('button', optionsBox);
@@ -600,6 +707,7 @@
       response_time_ms:  Math.round(session.timerSec * 1000),
       distractor_mode:   null,
       difficulty:        null,
+      intervention_id:   session?.handoff?.handoff_id || null,
     });
     session.mistakes.push({ row:card.row, chosen:'⏳', correct:card.options[card.correctIdx] });
 
@@ -649,6 +757,7 @@
     });
     HistoryStore.write(history);
     renderQuickStats();
+    renderAgentHandoffPanel();
     show('results');
   }
 
@@ -675,6 +784,7 @@
         <div class="text-sm text-slate-600">Streak</div>
       </div>`;
     qs('#last-session-info').textContent = last;
+    renderAgentHandoffPanel();
   }
 
   function renderHistory(){
@@ -715,7 +825,22 @@
   // ── Wire up buttons ───────────────────────────────────────────
   qs('#btn-start').addEventListener('click', () => startSession());
   qs('#btn-weak').addEventListener('click',  () => startSession({ weakOnly:true }));
-  qs('#btn-newrun').addEventListener('click', () => show('home'));
+  qs('#guided-start-btn').addEventListener('click', () => {
+    const handoff = getPendingConjunctHandoff();
+    if(!handoff){
+      renderAgentHandoffPanel();
+      return;
+    }
+    startSession({ handoff });
+  });
+  qs('#dismiss-guided-btn').addEventListener('click', () => {
+    clearPendingConjunctHandoff();
+    renderAgentHandoffPanel();
+  });
+  qs('#btn-newrun').addEventListener('click', () => {
+    show('home');
+    renderAgentHandoffPanel();
+  });
   qs('#btn-retry-mistakes').addEventListener('click', () => startSession({ fromMistakesOnly:true }));
 
   qs('#btn-toggle-history').addEventListener('click', () => {
@@ -732,6 +857,7 @@
   // ── Init ──────────────────────────────────────────────────────
   Settings.load();
   renderQuickStats();
+  renderAgentHandoffPanel();
 
 })();
 </script>
