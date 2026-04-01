@@ -67,6 +67,7 @@ This prints:
 - recommended next app
 - selection policy and selection reason
 - recommended session size
+- handoff contract details for a future app-facing integration
 - top review items for that app
 - app ranking with simple rule-based scores
 
@@ -75,6 +76,22 @@ Structured JSON output:
 ```bash
 .venv/bin/python pipeline/recommend_next_session.py --refresh-views --format json
 ```
+
+Handoff-only JSON output:
+
+```bash
+.venv/bin/python pipeline/recommend_next_session.py --refresh-views --format handoff
+```
+
+This emits a machine-friendly contract with:
+
+- contract version
+- action and delivery mode
+- target app and mode
+- session size
+- focus strategy
+- recommended item IDs
+- a future app-request block
 
 Persist a recommendation run for later evaluation:
 
@@ -115,6 +132,7 @@ Persist replay evaluation rows for later inspection:
 - Playwright uses its own persistent browser profile in `.playwright-profile`.
 - Data created in your normal browser profile is separate from the Playwright profile.
 - Recommendation payloads and replay-evaluation rows can both be stored in DuckDB for later analysis.
+- The recommender output now includes a dedicated `handoff` block intended to evolve into the later bidirectional app-agent contract.
 
 ## Use The Playwright Browser For Stage 2
 

@@ -36,7 +36,7 @@ def build_parser() -> argparse.ArgumentParser:
     )
     parser.add_argument(
         "--format",
-        choices=["text", "json"],
+        choices=["text", "json", "handoff"],
         default="text",
         help="Output format for the recommendation payload.",
     )
@@ -56,10 +56,12 @@ def print_text_recommendation(payload: Dict) -> None:
     recommended = payload["recommended_app"]
     top_items = payload["top_review_items"]
     app_ranking = payload["app_ranking"]
+    handoff = payload["handoff"]
 
     print("Next Session Recommendation")
     print(f"- recommended_app: {recommended['app']}")
     print(f"- app_priority_score: {recommended['app_priority_score']}")
+    print(f"- contract_version: {payload['recommendation_contract_version']}")
     print(f"- selection_policy: {recommended['selection_policy']}")
     print(f"- selection_reason: {recommended['selection_reason']}")
     print(f"- why: {recommended['rationale_summary']}")
@@ -69,6 +71,17 @@ def print_text_recommendation(payload: Dict) -> None:
         print(f"- top_driver: {recommended['top_driver']['item_id']} ({recommended['top_driver']['shown_value']})")
     if recommended["nonperfect_items_seen"]:
         print(f"- nonperfect_items_seen: {recommended['nonperfect_items_seen']}")
+
+    print("\nHandoff Contract")
+    print(f"- action: {handoff['action']}")
+    print(f"- delivery_mode: {handoff['delivery_mode']}")
+    print(f"- target_app: {handoff['target_app']}")
+    print(f"- target_mode: {handoff['target_mode']}")
+    print(f"- session_size: {handoff['session_size']}")
+    print(f"- focus_strategy: {handoff['focus_strategy']}")
+    print(f"- ui_message: {handoff['ui_message']}")
+    if handoff["focus_item_ids"]:
+        print(f"- focus_item_ids: {', '.join(handoff['focus_item_ids'])}")
 
     print("\nTop Review Items For Recommended App")
     if not top_items:
@@ -132,6 +145,8 @@ def main() -> int:
 
     if args.format == "json":
         print(json.dumps(payload, ensure_ascii=False, indent=2))
+    elif args.format == "handoff":
+        print(json.dumps(payload["handoff"], ensure_ascii=False, indent=2))
     else:
         print_text_recommendation(payload)
         if recommendation_id:

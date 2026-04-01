@@ -22,14 +22,17 @@ Append-only session log for resuming work across gaps.
 - Recommendation payloads are structured, versioned, and can be stored in DuckDB.
 - Replay evaluation rows can also be stored in DuckDB for later inspection.
 - The rule baseline now includes recent-app continuation logic, not just cross-app priority ranking.
+- The recommendation output now includes a dedicated handoff contract for future app-facing use.
 
 ### What Works Now
 
 - `pipeline/recommend_next_session.py` reuses shared recommendation logic and can output:
   - terminal text
   - JSON payloads
+  - handoff-only JSON
   - persisted recommendation runs
   - selection policy metadata such as `highest_priority` vs `continue_recent_app`
+  - a structured `handoff` block with action, target app, session size, and focus item IDs
 - `pipeline/replay_evaluate.py` can:
   - rebuild "what the agent knew before session X"
   - run the same deterministic recommender on that snapshot
@@ -52,6 +55,12 @@ Run the recommender with structured output:
 
 ```bash
 .venv/bin/python pipeline/recommend_next_session.py --refresh-views --format json
+```
+
+Emit only the handoff contract:
+
+```bash
+.venv/bin/python pipeline/recommend_next_session.py --refresh-views --format handoff
 ```
 
 Replay-evaluate the recommender:
@@ -77,7 +86,7 @@ Persist replay evaluation rows:
 Use the replay output to refine the deterministic rule engine before adding more autonomy. The most likely next changes are:
 
 - make item-level recommendation hits more meaningful for repeated review sessions
-- decide how much of the current continuation logic should eventually be exposed to the apps as a command contract
+- decide how much of the current handoff contract should become the real app command interface
 - decide whether replay should also score partial success when the right app was chosen but the exact recommended item did not appear
 
 ### Relevant Commits

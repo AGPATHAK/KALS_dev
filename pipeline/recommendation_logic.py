@@ -12,6 +12,7 @@ DEFAULT_DB_PATH = REPO_ROOT / "data" / "kals.duckdb"
 ANALYTICS_SQL_PATH = REPO_ROOT / "data" / "analytics_views.sql"
 SCHEMA_SQL_PATH = REPO_ROOT / "data" / "schema.sql"
 RECOMMENDER_VERSION = "stage3a_v1"
+RECOMMENDATION_CONTRACT_VERSION = "kals.recommendation.v1"
 
 
 def refresh_views_connection(conn: duckdb.DuckDBPyConnection) -> None:
@@ -189,11 +190,56 @@ def build_payload(
         f"{review_count} total review candidate(s), "
         f"accuracy {accuracy_pct}%"
     )
+    focus_item_ids = [item_id for (item_id, *_rest) in top_items]
+    focus_items = [
+        {
+            "item_id": item_id,
+            "shown_value": shown_value,
+            "review_priority_score": priority_score,
+        }
+        for (
+            item_id,
+            shown_value,
+            _fails,
+            _latest_result,
+            _first_fails,
+            _lifetime_accuracy_pct,
+            priority_score,
+        ) in top_items
+    ]
+    handoff = {
+        "contract_version": RECOMMENDATION_CONTRACT_VERSION,
+        "action": "start_practice_session",
+        "delivery_mode": "advisory",
+        "target_app": app,
+        "target_mode": "recognition",
+        "session_size": session_size,
+        "selection_policy": selection_policy,
+        "selection_reason": selection_reason,
+        "focus_strategy": "review_candidates_first" if focus_item_ids else "normal_practice",
+        "focus_item_ids": focus_item_ids,
+        "focus_items": focus_items,
+        "top_driver_item_id": top_item_id,
+        "top_driver_shown_value": top_item_value,
+        "ui_message": (
+            f"Open {app} for a {session_size}-item session and prioritize "
+            f"{len(focus_item_ids)} review item(s)."
+            if focus_item_ids
+            else f"Open {app} for a {session_size}-item session."
+        ),
+        "app_request": {
+            "app": app,
+            "mode": "recognition",
+            "session_size": session_size,
+            "recommended_item_ids": focus_item_ids,
+        },
+    }
 
     payload = {
         "generated_at_utc": generated_at_utc or now_utc_iso(),
         "source_db_path": str(db_path),
         "recommender_version": RECOMMENDER_VERSION,
+        "recommendation_contract_version": RECOMMENDATION_CONTRACT_VERSION,
         "recommended_app": {
             "app": app,
             "app_priority_score": score,
@@ -253,6 +299,7 @@ def build_payload(
                 rank_last_session_fail_count,
             ) in app_ranking
         ],
+        "handoff": handoff,
     }
     return payload
 
