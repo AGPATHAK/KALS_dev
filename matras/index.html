@@ -48,6 +48,25 @@
 
       <p id="last-session-info" class="text-slate-600"></p>
 
+      <div id="agent-handoff-panel" class="hidden rounded-xl border border-emerald-200 bg-emerald-50 p-4 text-left space-y-3">
+        <div class="flex items-start justify-between gap-3">
+          <div>
+            <p class="text-xs font-semibold uppercase tracking-wide text-emerald-700">Agent-Guided Session</p>
+            <p id="agent-handoff-message" class="text-sm text-slate-700 mt-1"></p>
+            <p id="agent-handoff-meta" class="text-xs text-slate-500 mt-2"></p>
+          </div>
+          <button id="dismiss-guided-btn"
+            class="text-xs text-slate-500 underline hover:text-slate-700">
+            Dismiss
+          </button>
+        </div>
+        <div id="agent-handoff-items" class="flex flex-wrap gap-2"></div>
+        <button id="guided-start-btn"
+          class="w-full py-3 bg-emerald-700 text-white rounded-xl text-base font-semibold hover:bg-emerald-800">
+          Start Recommended Session
+        </button>
+      </div>
+
       <!-- Settings -->
       <div class="grid sm:grid-cols-2 gap-4 text-left">
         <div>
@@ -265,6 +284,7 @@
     }
 
     const WEAK_DEFAULTS = { minAttempts: 8, threshold: 0.99 };
+    const PENDING_HANDOFF_KEY = 'kals_pending_recommendation_handoff';
 
     function isWeak(row, progress, minAttempts=WEAK_DEFAULTS.minAttempts, threshold=WEAK_DEFAULTS.threshold){
       const st = progress.itemStats?.[String(row.id)];
@@ -273,6 +293,42 @@
       if(attempts < minAttempts) return false;
       const acc = attempts ? (Number(st.correct||0) / attempts) : 0;
       return acc < threshold;
+    }
+
+    function readStorageJson(key){
+      try { return JSON.parse(localStorage.getItem(key) || 'null'); } catch { return null; }
+    }
+
+    function normalizeMatrasItemId(value){
+      return String(value || '').replace(/^matra\./, '');
+    }
+
+    function validateMatrasHandoff(handoff){
+      if(!handoff || typeof handoff !== 'object') return null;
+      if(handoff.contract_version !== 'kals.recommendation.v1') return null;
+      if(handoff.action !== 'start_practice_session') return null;
+      if(handoff.target_app !== 'matras') return null;
+      if(handoff.target_mode !== 'recognition') return null;
+      if(!handoff.app_request || handoff.app_request.app !== 'matras') return null;
+      if(!Number.isInteger(handoff.session_size) || handoff.session_size <= 0) return null;
+      const recommendedIds = Array.isArray(handoff.app_request.recommended_item_ids)
+        ? handoff.app_request.recommended_item_ids.map(normalizeMatrasItemId).filter(Boolean)
+        : [];
+      return {
+        ...handoff,
+        app_request: {
+          ...handoff.app_request,
+          recommended_item_ids: recommendedIds
+        }
+      };
+    }
+
+    function getPendingMatrasHandoff(){
+      return validateMatrasHandoff(readStorageJson(PENDING_HANDOFF_KEY));
+    }
+
+    function clearPendingMatrasHandoff(){
+      localStorage.removeItem(PENDING_HANDOFF_KEY);
     }
 
     // ---------- Deck Loading & Validation ----------
@@ -433,6 +489,21 @@
       return map;
     }
 
+    function buildGuidedMatrasQueue(pool, size, handoff){
+      const byId = new Map(pool.map(row => [String(row.id), row]));
+      const seen = new Set();
+      const guided = [];
+      (handoff.app_request.recommended_item_ids || []).forEach(id => {
+        const row = byId.get(String(id));
+        if(!row || seen.has(String(row.id))) return;
+        seen.add(String(row.id));
+        guided.push(row);
+      });
+      if(guided.length >= size) return guided.slice(0, size);
+      const filler = shuffle(pool.filter(row => !seen.has(String(row.id)))).slice(0, Math.max(0, size - guided.length));
+      return [...guided, ...filler];
+    }
+
     function buildCard(row, pool, distractorMode='same-base'){
       const correct = getCorrectAnswer(row);
       const optionCount = Math.max(3, row.options?.length || 3);
@@ -470,12 +541,44 @@
       return { row, prompt: row.prompt, options, correctIdx };
     }
 
-    function startSession({ fromMistakesOnly=false, weakOnly=false, minAttempts=WEAK_DEFAULTS.minAttempts, threshold=WEAK_DEFAULTS.threshold } = {}){ sessionAlive = true;
+    function renderAgentHandoffPanel(){
+      const handoff = getPendingMatrasHandoff();
+      const panel = document.getElementById('agent-handoff-panel');
+      const itemsEl = document.getElementById('agent-handoff-items');
+      if(!panel || !itemsEl) return;
+      if(!handoff){
+        panel.classList.add('hidden');
+        itemsEl.innerHTML = '';
+        return;
+      }
+
+      panel.classList.remove('hidden');
+      document.getElementById('agent-handoff-message').textContent =
+        handoff.ui_message || `Open matras for a ${handoff.session_size}-card recommended session.`;
+      document.getElementById('agent-handoff-meta').textContent =
+        `${handoff.selection_reason || 'Agent guidance available'} · ${handoff.session_size} cards`;
+
+      const focusItems = Array.isArray(handoff.focus_items) ? handoff.focus_items.slice(0, 6) : [];
+      itemsEl.innerHTML = focusItems.length
+        ? focusItems.map(item => `
+          <span class="kn inline-flex items-center rounded-full bg-white px-3 py-1 text-sm font-semibold text-emerald-800 border border-emerald-200">
+            ${escapeHtml(item.shown_value)}
+          </span>
+        `).join('')
+        : '<span class="text-xs text-slate-500">No specific focus items attached.</span>';
+    }
+
+    function startSession({ fromMistakesOnly=false, weakOnly=false, minAttempts=WEAK_DEFAULTS.minAttempts, threshold=WEAK_DEFAULTS.threshold, handoff=null } = {}){ sessionAlive = true;
+      handoff = validateMatrasHandoff(handoff);
       const s = Settings.save();
       const progress = ProgressStore.get();
       let pool = deckRaw.filter(r=> String(r.level)==='2');
+      if(handoff){
+        fromMistakesOnly = false;
+        weakOnly = false;
+      }
       if(fromMistakesOnly && session && session.mistakes.length){ pool = session.mistakes.map(m=>m.row); }
-      if(weakOnly){
+      if(!handoff && weakOnly){
         pool = pool.filter(r=> isWeak(r, progress, minAttempts, threshold));
         if(pool.length===0){
           alert(`No weak matras found yet. Criteria: attempts ≥ ${minAttempts} AND accuracy < ${Math.round(threshold*100)}%. Keep practicing normally for a few sessions first.`);
@@ -488,7 +591,9 @@
       let chosenBase = '';
       let chosenMatra = '';
 
-      if(!fromMistakesOnly && !weakOnly && s.sessionMode === 'family'){
+      if(handoff){
+        sessionLabel = 'Agent-guided review';
+      } else if(!fromMistakesOnly && !weakOnly && s.sessionMode === 'family'){
         const baseGroups = buildBaseGroups(pool);
         const candidateBases = Array.from(baseGroups.keys()).filter(base => (baseGroups.get(base)||[]).length >= 3);
         if(candidateBases.length){
@@ -511,10 +616,12 @@
       }
 
       const requestedCount = Math.max(1, Number(s.cardsCount)||20);
-      const effectiveCount = Math.min(requestedCount, pool.length);
-      const queue = shuffle([...pool]).slice(0, effectiveCount);
+      const effectiveCount = Math.min(handoff ? handoff.session_size : requestedCount, pool.length);
+      const queue = handoff
+        ? buildGuidedMatrasQueue(pool, effectiveCount, handoff)
+        : shuffle([...pool]).slice(0, effectiveCount);
 
-      session = { idx:0, total:queue.length, score:0, mistakes:[], times:[], timerSec:Number(s.timerSec)||5, current:null, level:s.level, pool:[...pool], queue, distractorMode:s.distractorMode || 'same-base', sessionMode:s.sessionMode || 'mixed', chosenBase, chosenMatra, label:sessionLabel };
+      session = { idx:0, total:queue.length, score:0, mistakes:[], times:[], timerSec:Number(s.timerSec)||5, current:null, level:s.level, pool:[...pool], queue, distractorMode:s.distractorMode || 'same-base', sessionMode:handoff ? 'guided' : (s.sessionMode || 'mixed'), chosenBase, chosenMatra, label:sessionLabel, handoff };
       elCardTotal.textContent = String(session.total);
       elScore.textContent = '0';
       const labelEl = document.getElementById('session-label');
@@ -523,6 +630,7 @@
         labelEl.textContent = `${sessionLabel} • ${distractorText}`;
       }
       // ── KJT: start of session ──────────────────────────────────────────
+      if(handoff) clearPendingMatrasHandoff();
       KJT.startSession();
       // ───────────────────────────────────────────────────────────────────
       show('play');
@@ -580,6 +688,7 @@
       response_time_ms:  Math.round(performance.now() - lastStartTs),
       distractor_mode:   session.distractorMode === 'same-base' ? 'similar' : 'random',
       difficulty:        null,
+      intervention_id:   session?.handoff?.handoff_id || null,
       });
       // ───────────────────────────────────────────────────────────────────
       const buttons = qsa('button', optionsBox);
@@ -654,6 +763,7 @@
       response_time_ms:  Math.round(session.timerSec * 1000),
       distractor_mode:   session.distractorMode === 'same-base' ? 'similar' : 'random',
       difficulty:        null,
+      intervention_id:   session?.handoff?.handoff_id || null,
       });
       // ───────────────────────────────────────────────────────────────────
       session.mistakes.push({ row, chosen: '⏳', correct: card.options[card.correctIdx] });
@@ -704,6 +814,7 @@
       });
       HistoryStore.write(history);
       renderQuickStats();
+      renderAgentHandoffPanel();
       show('results');
     }
 
@@ -736,6 +847,7 @@
         </div>`;
       const infoEl = document.getElementById('last-session-info');
       if(infoEl) infoEl.textContent = lastInfo;
+      renderAgentHandoffPanel();
     }
     // ---------- History UI ----------
     const historyPanel = document.getElementById('history-panel');
@@ -798,15 +910,31 @@
     document.getElementById('btn-start')?.addEventListener('click', ()=>{ startSession(); });
 
     document.getElementById('btn-weak')?.addEventListener('click', ()=>{ startSession({ weakOnly:true }); });
+    document.getElementById('guided-start-btn')?.addEventListener('click', ()=>{
+      const handoff = getPendingMatrasHandoff();
+      if(!handoff){
+        renderAgentHandoffPanel();
+        return;
+      }
+      startSession({ handoff });
+    });
+    document.getElementById('dismiss-guided-btn')?.addEventListener('click', ()=>{
+      clearPendingMatrasHandoff();
+      renderAgentHandoffPanel();
+    });
 
 
-    document.getElementById('btn-newrun')?.addEventListener('click', ()=> show('home'));
+    document.getElementById('btn-newrun')?.addEventListener('click', ()=>{
+      show('home');
+      renderAgentHandoffPanel();
+    });
     document.getElementById('btn-retry-mistakes')?.addEventListener('click', ()=> startSession({ fromMistakesOnly:true }));
 
     // Init
     Settings.load();
     renderHistory();
     renderQuickStats();
+    renderAgentHandoffPanel();
 
 })();
 
