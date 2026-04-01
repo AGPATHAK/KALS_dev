@@ -41,10 +41,12 @@ def build_parser() -> argparse.ArgumentParser:
 
 def main() -> int:
     args = build_parser().parse_args()
-    profile_dir = Path(args.profile_dir)
-    profile_dir.mkdir(parents=True, exist_ok=True)
-    app_path = APP_PAGES[args.app]
+    return run_app_until_interrupt(args.app, Path(args.profile_dir))
 
+
+def run_app_until_interrupt(app: str, profile_dir: Path) -> int:
+    profile_dir.mkdir(parents=True, exist_ok=True)
+    app_path = APP_PAGES[app]
     with sync_playwright() as p:
         context = p.chromium.launch_persistent_context(
             user_data_dir=str(profile_dir),
@@ -53,7 +55,7 @@ def main() -> int:
         try:
             page = context.pages[0] if context.pages else context.new_page()
             page.goto(app_path.resolve().as_uri(), wait_until="domcontentloaded")
-            print(f"Opened {args.app} in persistent Playwright profile: {profile_dir}")
+            print(f"Opened {app} in persistent Playwright profile: {profile_dir}")
             print("Use this browser window for practice. Press Ctrl+C here when you are done.")
             while True:
                 time.sleep(1)

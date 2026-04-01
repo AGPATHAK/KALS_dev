@@ -153,6 +153,7 @@
       const LATEST_HANDOFF_KEY = "kals_latest_recommendation_handoff";
       const PENDING_HANDOFF_KEY = "kals_pending_recommendation_handoff";
       const CONTROL_API_BASE = "http://127.0.0.1:8765";
+      const COACH_WINDOW_NAME = "kals-coach-hub";
       const APP_PATHS = {
         alphabet: "../alphabet/index.html",
         matras: "../matras/index.html",
@@ -160,12 +161,18 @@
         words: "../words/index.html",
       };
 
+      window.name = COACH_WINDOW_NAME;
+
       function readJson(key) {
         try { return JSON.parse(localStorage.getItem(key) || "null"); } catch { return null; }
       }
 
       function appHref(app) {
         return new URL(APP_PATHS[app], window.location.href).href;
+      }
+
+      function appWindowName(app) {
+        return `kals-practice-${app}`;
       }
 
       function setRefreshStatus(message, tone = "neutral") {
@@ -186,6 +193,8 @@
 
       async function refreshViaControlPlane() {
         const refreshBtn = document.getElementById("refresh-btn");
+        const previous = readJson(PENDING_HANDOFF_KEY) || readJson(LATEST_HANDOFF_KEY);
+        const previousApp = previous?.target_app || previous?.app_request?.app || null;
         refreshBtn.disabled = true;
         setRefreshStatus("Refreshing recommendation from the local coach service...", "neutral");
         try {
@@ -207,8 +216,13 @@
 
           renderRecommendation();
           const summary = payload.ingest_summary || {};
+          const nextApp = payload.recommendation?.recommended_app?.app || payload.recommendation?.handoff?.target_app || "the same app";
+          const sameApp = previousApp && nextApp === previousApp;
+          const guidance = sameApp
+            ? ` Still recommending ${nextApp} because the ranking is cumulative and recent corrections have not yet outweighed earlier misses.`
+            : ` Next recommendation is ${nextApp}.`;
           setRefreshStatus(
-            `Updated coach recommendation. Inserted ${summary.inserted || 0} new event(s) and skipped ${summary.duplicates || 0} duplicate(s).`,
+            `Updated coach recommendation. Inserted ${summary.inserted || 0} new event(s) and skipped ${summary.duplicates || 0} duplicate(s).${guidance}`,
             "success"
           );
         } catch (error) {
@@ -291,14 +305,14 @@
       document.getElementById("start-recommended-btn").addEventListener("click", (event) => {
         const app = event.currentTarget.dataset.targetApp;
         if (!app || !APP_PATHS[app]) return;
-        window.open(appHref(app), "_blank", "noopener");
+        window.open(appHref(app), appWindowName(app));
       });
 
       document.querySelectorAll(".app-launch").forEach((button) => {
         button.addEventListener("click", () => {
           const app = button.dataset.app;
           if (!APP_PATHS[app]) return;
-          window.open(appHref(app), "_blank", "noopener");
+          window.open(appHref(app), appWindowName(app));
         });
       });
 

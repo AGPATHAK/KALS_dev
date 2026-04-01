@@ -88,11 +88,17 @@ Open the browser-side coach hub in the persistent Playwright profile:
 .venv/bin/python pipeline/open_app.py coach
 ```
 
+Or start the smoother real-practice stack with one command:
+
+```bash
+.venv/bin/python pipeline/start_coach_practice.py
+```
+
 The coach hub can:
 
 - show the current pending or latest recommendation
-- launch the recommended app from the browser in a new tab
-- open any practice app directly for normal use in a new tab
+- launch the recommended app from the browser in a reusable app tab
+- open any practice app directly for normal use in a reusable app tab
 - keep the coach hub available while you practice
 - reduce the need to trigger app launches from bash during real practice
 
@@ -108,6 +114,7 @@ When that server is running, the coach hub `Refresh Recommendation` button will:
 - recompute the deterministic recommendation
 - save recommendation and delivery rows
 - update the pending/latest handoff in browser storage without terminating the browser session
+- explain when the recommendation stays on the same app because review pressure is still cumulative
 
 If the server is not running, the coach hub still shows the fallback terminal commands for the validated manual refresh path.
 

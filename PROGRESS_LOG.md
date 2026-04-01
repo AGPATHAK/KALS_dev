@@ -38,6 +38,7 @@ Append-only session log for resuming work across gaps.
 - A browser-side coach hub now exists as the first non-terminal control surface for launching recommended practice.
 - The practice flow is now smoother: the coach opens apps in new tabs, shows the post-practice pipeline commands, and every app exposes a direct `Coach Hub` return shortcut in its header.
 - A lightweight local coach control server now exists as the next UX layer above the validated pipeline, so the browser can request ingest + recommendation refresh without dropping back into the old stop-and-run-bash loop each time.
+- The smoother practice entrypoint now also has a one-command launcher that starts the local coach control server and opens the coach together.
 
 ### What Works Now
 
@@ -98,6 +99,7 @@ Append-only session log for resuming work across gaps.
   - launch the recommended app from the browser without using bash for each app start
   - open any app directly for normal practice
   - call a local coach control server to ingest browser events and refresh the next recommendation in place
+  - reuse named coach/app tabs instead of multiplying browser pages during practice
 - `pipeline/deliver_recommendation_handoff.py` can now:
   - deliver the normal recommender-selected handoff
   - or deliver a manual app-targeted handoff for validation runs
@@ -107,6 +109,10 @@ Append-only session log for resuming work across gaps.
   - ingest them into DuckDB without reopening the Playwright profile
   - recompute the deterministic recommendation
   - persist recommendation and delivery rows for the refreshed handoff
+- `pipeline/start_coach_practice.py` can now:
+  - start the local coach control server
+  - open the coach hub in the persistent Playwright profile
+  - shut both down together from one terminal session
 
 ### Current Replay Signal
 
