@@ -58,6 +58,7 @@ This prints:
 - guided session summary
 - guided focus-item outcomes
 - guided app performance
+- guided-vs-normal app comparison
 
 Generate a deterministic next-session recommendation:
 
@@ -173,6 +174,7 @@ Persist replay evaluation rows for later inspection:
   - `kals_latest_recommendation_handoff`
   - `kals_pending_recommendation_handoff`
 - Guided sessions can now be evaluated analytically because app-side guided runs write the delivered `handoff_id` back into raw telemetry as `intervention_id`.
+- The analytics layer can now compare guided-session performance against normal-session performance by app.
 
 ## Use The Playwright Browser For Stage 2
 

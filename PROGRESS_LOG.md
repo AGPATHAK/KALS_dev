@@ -29,6 +29,7 @@ Append-only session log for resuming work across gaps.
 - `matras` now also has an optional app-side consumption path for the same advisory handoff pattern.
 - `conjuncts` now also has an optional app-side consumption path for the same advisory handoff pattern.
 - Guided-session analytics now exist on top of `intervention_id`, so agent-guided sessions can be measured separately from normal sessions.
+- Guided-session analytics can now compare agent-guided sessions against normal sessions by app.
 
 ### What Works Now
 
@@ -74,6 +75,7 @@ Append-only session log for resuming work across gaps.
   - guided session summaries
   - guided focus-item outcomes
   - guided app performance
+  - guided-vs-normal app comparison
 
 ### Current Replay Signal
 
@@ -123,13 +125,14 @@ Deliver the current handoff into the app environment:
 - The apps still do not consume the delivered handoff automatically; the bridge currently writes advisory data only.
 - All four apps now support optional advisory handoff consumption, but the handoff is still learner-started rather than automatically enforced.
 - Guided-session evaluation is still early and depends on creating more real guided-session data.
+- Guided-session comparisons are now possible, but the sample is still too small for strong conclusions.
 
 ### Immediate Next Step
 
 Use the replay output to refine the deterministic rule engine before adding more autonomy. The most likely next changes are:
 
 - generate more real guided-session data in the Playwright profile
-- inspect guided-session performance and focus-item outcomes in DuckDB
+- inspect guided-session performance, focus-item outcomes, and guided-vs-normal comparisons in DuckDB
 - decide how much of the current handoff contract should become the real app command interface
 - evaluate whether replay and guided-session metrics are enough before touching the rule engine again
 

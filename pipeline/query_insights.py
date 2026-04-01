@@ -90,6 +90,12 @@ def build_parser() -> argparse.ArgumentParser:
         default=10,
         help="How many guided app performance rows to print.",
     )
+    parser.add_argument(
+        "--comparison-limit",
+        type=int,
+        default=10,
+        help="How many guided-vs-normal comparison rows to print.",
+    )
     return parser
 
 
@@ -294,6 +300,25 @@ def main() -> int:
             """,
             [args.guided_app_limit],
         ).fetchall()
+
+        comparison_rows = conn.execute(
+            """
+            SELECT
+              app,
+              normal_sessions,
+              normal_accuracy_pct,
+              guided_sessions,
+              guided_accuracy_pct,
+              accuracy_delta_pct,
+              avg_normal_response_ms,
+              avg_guided_response_ms,
+              response_time_delta_ms
+            FROM guided_vs_normal_app_comparison
+            ORDER BY app ASC
+            LIMIT ?
+            """,
+            [args.comparison_limit],
+        ).fetchall()
     finally:
         conn.close()
 
@@ -356,6 +381,11 @@ def main() -> int:
         "Guided App Performance",
         ["app", "guided_sessions", "guided_attempts", "guided_fails", "guided_accuracy_pct", "avg_guided_response_ms"],
         guided_app_rows,
+    )
+    print_table(
+        "Guided vs Normal Comparison",
+        ["app", "normal_sessions", "normal_accuracy_pct", "guided_sessions", "guided_accuracy_pct", "accuracy_delta_pct", "avg_normal_response_ms", "avg_guided_response_ms", "response_time_delta_ms"],
+        comparison_rows,
     )
     return 0
 

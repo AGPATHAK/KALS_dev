@@ -384,7 +384,8 @@ focus_attempts AS (
   GROUP BY f.handoff_id, g.session_id, COALESCE(g.app, f.recommended_app), f.focus_item_id
 )
 SELECT *
-FROM focus_attempts;
+FROM focus_attempts
+WHERE session_id IS NOT NULL;
 
 CREATE OR REPLACE VIEW guided_app_performance AS
 SELECT
@@ -398,3 +399,58 @@ SELECT
   MAX(session_end_utc) AS last_guided_session_utc
 FROM guided_session_summary
 GROUP BY app;
+
+CREATE OR REPLACE VIEW normal_session_summary AS
+SELECT
+  session_id,
+  app,
+  MIN(timestamp_utc) AS session_start_utc,
+  MAX(timestamp_utc) AS session_end_utc,
+  COUNT(*) AS attempts,
+  SUM(CASE WHEN result = 'pass' THEN 1 ELSE 0 END) AS passes,
+  SUM(CASE WHEN result = 'fail' THEN 1 ELSE 0 END) AS fails,
+  ROUND(100.0 * SUM(CASE WHEN result = 'pass' THEN 1 ELSE 0 END) / COUNT(*), 1) AS accuracy_pct,
+  ROUND(AVG(response_time_ms), 1) AS avg_response_ms
+FROM raw_attempt_events
+WHERE intervention_id IS NULL
+GROUP BY session_id, app;
+
+CREATE OR REPLACE VIEW normal_app_performance AS
+SELECT
+  app,
+  COUNT(*) AS normal_sessions,
+  SUM(attempts) AS normal_attempts,
+  SUM(passes) AS normal_passes,
+  SUM(fails) AS normal_fails,
+  ROUND(100.0 * SUM(passes) / NULLIF(SUM(attempts), 0), 1) AS normal_accuracy_pct,
+  ROUND(AVG(avg_response_ms), 1) AS avg_normal_response_ms,
+  MAX(session_end_utc) AS last_normal_session_utc
+FROM normal_session_summary
+GROUP BY app;
+
+CREATE OR REPLACE VIEW guided_vs_normal_app_comparison AS
+SELECT
+  COALESCE(n.app, g.app) AS app,
+  COALESCE(n.normal_sessions, 0) AS normal_sessions,
+  COALESCE(n.normal_attempts, 0) AS normal_attempts,
+  COALESCE(n.normal_fails, 0) AS normal_fails,
+  n.normal_accuracy_pct,
+  n.avg_normal_response_ms,
+  COALESCE(g.guided_sessions, 0) AS guided_sessions,
+  COALESCE(g.guided_attempts, 0) AS guided_attempts,
+  COALESCE(g.guided_fails, 0) AS guided_fails,
+  g.guided_accuracy_pct,
+  g.avg_guided_response_ms,
+  CASE
+    WHEN n.normal_sessions IS NOT NULL AND g.guided_sessions IS NOT NULL
+    THEN ROUND(g.guided_accuracy_pct - n.normal_accuracy_pct, 1)
+    ELSE NULL
+  END AS accuracy_delta_pct,
+  CASE
+    WHEN n.normal_sessions IS NOT NULL AND g.guided_sessions IS NOT NULL
+    THEN ROUND(g.avg_guided_response_ms - n.avg_normal_response_ms, 1)
+    ELSE NULL
+  END AS response_time_delta_ms
+FROM normal_app_performance n
+FULL OUTER JOIN guided_app_performance g
+  ON n.app = g.app;
