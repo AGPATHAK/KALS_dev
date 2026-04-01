@@ -53,6 +53,7 @@ This prints:
 - first-pass accuracy by item
 - item recency summaries
 - prioritized review candidates
+- recent app usage
 - next-session app summary
 
 Generate a deterministic next-session recommendation:
@@ -64,6 +65,7 @@ Generate a deterministic next-session recommendation:
 This prints:
 
 - recommended next app
+- selection policy and selection reason
 - recommended session size
 - top review items for that app
 - app ranking with simple rule-based scores
@@ -92,6 +94,11 @@ This prints:
 - how often the predicted app matched the learner's actual next app
 - how often the predicted review items overlapped with later failed items
 - per-session replay rows for inspection
+
+The current baseline now uses two selection modes:
+
+- `highest_priority`: choose the app with the strongest cross-app review pressure
+- `continue_recent_app`: continue the most recent app when it is still newly introduced or ended with fresh failures
 
 Persist replay evaluation rows for later inspection:
 

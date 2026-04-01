@@ -21,6 +21,7 @@ Append-only session log for resuming work across gaps.
   - offline replay evaluation against historical sessions
 - Recommendation payloads are structured, versioned, and can be stored in DuckDB.
 - Replay evaluation rows can also be stored in DuckDB for later inspection.
+- The rule baseline now includes recent-app continuation logic, not just cross-app priority ranking.
 
 ### What Works Now
 
@@ -28,6 +29,7 @@ Append-only session log for resuming work across gaps.
   - terminal text
   - JSON payloads
   - persisted recommendation runs
+  - selection policy metadata such as `highest_priority` vs `continue_recent_app`
 - `pipeline/replay_evaluate.py` can:
   - rebuild "what the agent knew before session X"
   - run the same deterministic recommender on that snapshot
@@ -38,9 +40,9 @@ Append-only session log for resuming work across gaps.
 ### Current Replay Signal
 
 - On the current toy dataset, replay evaluates 7 historical sessions.
-- The present rule baseline matches the learner's actual next app in 2 of 7 replayed sessions.
+- The present rule baseline now matches the learner's actual next app in 4 of 7 replayed sessions.
 - Item-hit rate is currently 0.0% on later failed items.
-- This is useful, not discouraging: it shows the replay harness is exposing current recommender bias rather than letting us guess.
+- This is useful, not discouraging: it shows the replay harness can now measure whether rule changes are helping or not.
 
 ### Key Commands To Resume
 
@@ -72,9 +74,9 @@ Persist replay evaluation rows:
 
 Use the replay output to refine the deterministic rule engine before adding more autonomy. The most likely next changes are:
 
-- rebalance app-ranking rules so one app does not dominate too easily
-- add a clearer notion of app rotation or recent app usage into the recommendation logic
 - improve evaluation metrics beyond strict item-failure overlap
+- make item-level recommendation hits more meaningful for repeated review sessions
+- decide how much of the current continuation logic should eventually be exposed to the apps as a command contract
 
 ### Relevant Commits
 

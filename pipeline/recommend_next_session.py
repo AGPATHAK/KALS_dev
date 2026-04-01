@@ -60,6 +60,8 @@ def print_text_recommendation(payload: Dict) -> None:
     print("Next Session Recommendation")
     print(f"- recommended_app: {recommended['app']}")
     print(f"- app_priority_score: {recommended['app_priority_score']}")
+    print(f"- selection_policy: {recommended['selection_policy']}")
+    print(f"- selection_reason: {recommended['selection_reason']}")
     print(f"- why: {recommended['rationale_summary']}")
     print(f"- recommended_session_size: {recommended['recommended_session_size']}")
     print(f"- session_size_reason: {recommended['session_size_reason']}")
@@ -95,6 +97,8 @@ def print_text_recommendation(payload: Dict) -> None:
                 f"review_candidates={row['review_candidate_count']}",
                 f"urgent={row['urgent_review_count']}",
                 f"accuracy={row['accuracy_pct']}%",
+                f"last_session_rank={row['last_session_rank']}",
+                f"last_session_fails={row['last_session_fail_count']}",
                 f"score={row['next_app_priority_score']}",
             ],
         )

@@ -2,7 +2,7 @@ import hashlib
 import json
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Tuple
 
 import duckdb
 
@@ -34,7 +34,20 @@ def make_hash(value: str) -> str:
     return hashlib.sha256(value.encode("utf-8")).hexdigest()
 
 
-def recommend_session_size(app: str, urgent_count: int, review_count: int, accuracy_pct: float) -> tuple:
+def recommend_session_size(
+    app: str,
+    urgent_count: int,
+    review_count: int,
+    accuracy_pct: float,
+    *,
+    selection_policy: str = "highest_priority",
+    last_session_fail_count: int = 0,
+) -> tuple:
+    if selection_policy == "continue_recent_app" and last_session_fail_count > 0:
+        if app == "words":
+            return 10, "keep the continuation session short so the fresh miss can be revisited while it is still recent"
+        return 5, "keep the continuation session short so the fresh misses can be reviewed while they are still recent"
+
     if app == "words":
         if urgent_count >= 2 or accuracy_pct < 85.0:
             return 10, "keep the words session short because current review pressure is meaningful"
@@ -55,7 +68,7 @@ def fetch_recommendation_inputs(
     top_items_limit: int,
     top_apps_limit: int,
 ) -> tuple:
-    recommended_app = conn.execute(
+    app_rows = conn.execute(
         """
         SELECT
           app,
@@ -65,27 +78,29 @@ def fetch_recommendation_inputs(
           accuracy_pct,
           top_candidate_item_id,
           top_candidate_shown_value,
-          next_app_priority_score
+          next_app_priority_score,
+          sessions,
+          last_session_rank,
+          last_session_fail_count
         FROM next_session_app_summary
         ORDER BY next_app_priority_score DESC, app ASC
-        LIMIT 1
         """
-    ).fetchone()
-
-    app_ranking = conn.execute(
-        """
-        SELECT
-          app,
-          review_candidate_count,
-          urgent_review_count,
-          accuracy_pct,
-          next_app_priority_score
-        FROM next_session_app_summary
-        ORDER BY next_app_priority_score DESC, app ASC
-        LIMIT ?
-        """,
-        [top_apps_limit],
     ).fetchall()
+
+    recommended_app, selection_policy, selection_reason = choose_recommended_app(app_rows)
+
+    app_ranking = [
+        (
+            row[0],
+            row[1],
+            row[2],
+            row[4],
+            row[7],
+            row[9],
+            row[10],
+        )
+        for row in app_rows[:top_apps_limit]
+    ]
 
     top_items = []
     if recommended_app:
@@ -107,7 +122,35 @@ def fetch_recommendation_inputs(
             [recommended_app[0], top_items_limit],
         ).fetchall()
 
-    return recommended_app, app_ranking, top_items
+    return recommended_app, app_ranking, top_items, selection_policy, selection_reason
+
+
+def choose_recommended_app(app_rows: List[tuple]) -> Tuple[Optional[tuple], str, str]:
+    if not app_rows:
+        return None, "none", "no app recommendation is available yet"
+
+    for row in app_rows:
+        (
+            app,
+            review_count,
+            urgent_count,
+            nonperfect_items,
+            accuracy_pct,
+            top_item_id,
+            top_item_value,
+            score,
+            sessions,
+            last_session_rank,
+            last_session_fail_count,
+        ) = row
+        if last_session_rank == 1 and sessions <= 2 and (last_session_fail_count > 0 or sessions == 1):
+            if last_session_fail_count > 0:
+                reason = "continue the most recent app because the last session ended with unresolved failures"
+            else:
+                reason = "continue the most recent app because it is newly introduced and still under-sampled"
+            return row, "continue_recent_app", reason
+
+    return app_rows[0], "highest_priority", "choose the app with the highest current cross-app priority score"
 
 
 def build_payload(
@@ -116,6 +159,8 @@ def build_payload(
     recommended_app_row: tuple,
     top_items: List[tuple],
     app_ranking: List[tuple],
+    selection_policy: str,
+    selection_reason: str,
     generated_at_utc: Optional[str] = None,
 ) -> Dict:
     (
@@ -127,8 +172,18 @@ def build_payload(
         top_item_id,
         top_item_value,
         score,
+        sessions,
+        last_session_rank,
+        last_session_fail_count,
     ) = recommended_app_row
-    session_size, session_size_reason = recommend_session_size(app, urgent_count, review_count, accuracy_pct)
+    session_size, session_size_reason = recommend_session_size(
+        app,
+        urgent_count,
+        review_count,
+        accuracy_pct,
+        selection_policy=selection_policy,
+        last_session_fail_count=last_session_fail_count,
+    )
     rationale_summary = (
         f"{urgent_count} urgent review candidate(s), "
         f"{review_count} total review candidate(s), "
@@ -142,12 +197,17 @@ def build_payload(
         "recommended_app": {
             "app": app,
             "app_priority_score": score,
+            "selection_policy": selection_policy,
+            "selection_reason": selection_reason,
             "recommended_session_size": session_size,
             "session_size_reason": session_size_reason,
             "rationale_summary": rationale_summary,
             "review_candidate_count": review_count,
             "urgent_review_count": urgent_count,
             "nonperfect_items_seen": nonperfect_items,
+            "sessions_seen": sessions,
+            "last_session_rank": last_session_rank,
+            "last_session_fail_count": last_session_fail_count,
             "top_driver": {
                 "item_id": top_item_id,
                 "shown_value": top_item_value,
@@ -180,6 +240,8 @@ def build_payload(
                 "urgent_review_count": rank_urgent_count,
                 "accuracy_pct": rank_accuracy_pct,
                 "next_app_priority_score": rank_score,
+                "last_session_rank": rank_last_session_rank,
+                "last_session_fail_count": rank_last_session_fail_count,
             }
             for (
                 rank_app,
@@ -187,6 +249,8 @@ def build_payload(
                 rank_urgent_count,
                 rank_accuracy_pct,
                 rank_score,
+                rank_last_session_rank,
+                rank_last_session_fail_count,
             ) in app_ranking
         ],
     }
@@ -201,7 +265,7 @@ def generate_recommendation(
     top_apps_limit: int,
     generated_at_utc: Optional[str] = None,
 ) -> Optional[Dict]:
-    recommended_app, app_ranking, top_items = fetch_recommendation_inputs(
+    recommended_app, app_ranking, top_items, selection_policy, selection_reason = fetch_recommendation_inputs(
         conn,
         top_items_limit=top_items_limit,
         top_apps_limit=top_apps_limit,
@@ -214,6 +278,8 @@ def generate_recommendation(
         recommended_app_row=recommended_app,
         top_items=top_items,
         app_ranking=app_ranking,
+        selection_policy=selection_policy,
+        selection_reason=selection_reason,
         generated_at_utc=generated_at_utc,
     )
 

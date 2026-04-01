@@ -66,6 +66,12 @@ def build_parser() -> argparse.ArgumentParser:
         default=10,
         help="How many next-session app summary rows to print.",
     )
+    parser.add_argument(
+        "--app-usage-limit",
+        type=int,
+        default=10,
+        help="How many recent app usage rows to print.",
+    )
     return parser
 
 
@@ -183,6 +189,22 @@ def main() -> int:
             [args.review_limit],
         ).fetchall()
 
+        app_usage_rows = conn.execute(
+            """
+            SELECT
+              app,
+              sessions_seen,
+              last_session_rank,
+              last_session_attempt_count,
+              last_session_fail_count,
+              sessions_in_last_3
+            FROM recent_app_usage
+            ORDER BY last_session_rank ASC, app ASC
+            LIMIT ?
+            """,
+            [args.app_usage_limit],
+        ).fetchall()
+
         app_summaries = conn.execute(
             """
             SELECT
@@ -191,6 +213,9 @@ def main() -> int:
               urgent_review_count,
               nonperfect_items,
               accuracy_pct,
+              last_session_rank,
+              last_session_fail_count,
+              recent_session_adjustment,
               top_candidate_item_id,
               top_candidate_shown_value,
               next_app_priority_score
@@ -239,8 +264,13 @@ def main() -> int:
         review_candidates,
     )
     print_table(
+        "Recent App Usage",
+        ["app", "sessions_seen", "last_session_rank", "last_session_attempt_count", "last_session_fail_count", "sessions_in_last_3"],
+        app_usage_rows,
+    )
+    print_table(
         "Next-Session App Summary",
-        ["app", "review_candidate_count", "urgent_review_count", "nonperfect_items", "accuracy_pct", "top_candidate_item_id", "top_candidate_shown_value", "next_app_priority_score"],
+        ["app", "review_candidate_count", "urgent_review_count", "nonperfect_items", "accuracy_pct", "last_session_rank", "last_session_fail_count", "recent_session_adjustment", "top_candidate_item_id", "top_candidate_shown_value", "next_app_priority_score"],
         app_summaries,
     )
     return 0

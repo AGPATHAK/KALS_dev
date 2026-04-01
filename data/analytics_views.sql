@@ -108,6 +108,39 @@ SELECT
 FROM raw_attempt_events
 GROUP BY app, item_id, item_type;
 
+CREATE OR REPLACE VIEW session_rollup AS
+SELECT
+  session_id,
+  app,
+  MIN(timestamp_utc) AS session_start_utc,
+  MAX(timestamp_utc) AS session_end_utc,
+  COUNT(*) AS attempt_count,
+  SUM(CASE WHEN result = 'pass' THEN 1 ELSE 0 END) AS pass_count,
+  SUM(CASE WHEN result = 'fail' THEN 1 ELSE 0 END) AS fail_count
+FROM raw_attempt_events
+GROUP BY session_id, app;
+
+CREATE OR REPLACE VIEW recent_app_usage AS
+WITH ranked_sessions AS (
+  SELECT
+    *,
+    ROW_NUMBER() OVER (
+      ORDER BY session_start_utc DESC, app ASC, session_id ASC
+    ) AS global_recent_session_rank
+  FROM session_rollup
+)
+SELECT
+  app,
+  COUNT(*) AS sessions_seen,
+  MAX(session_start_utc) AS last_session_start_utc,
+  MAX(session_end_utc) AS last_session_end_utc,
+  MIN(global_recent_session_rank) AS last_session_rank,
+  ARG_MAX(attempt_count, session_start_utc) AS last_session_attempt_count,
+  ARG_MAX(fail_count, session_start_utc) AS last_session_fail_count,
+  SUM(CASE WHEN global_recent_session_rank <= 3 THEN 1 ELSE 0 END) AS sessions_in_last_3
+FROM ranked_sessions
+GROUP BY app;
+
 CREATE OR REPLACE VIEW prioritized_review_candidates AS
 SELECT
   r.app,
@@ -167,6 +200,18 @@ item_rollup AS (
     SUM(CASE WHEN lifetime_accuracy_pct < 100 THEN 1 ELSE 0 END) AS nonperfect_items
   FROM item_recency
   GROUP BY app
+),
+recent_usage AS (
+  SELECT
+    app,
+    sessions_seen,
+    last_session_start_utc,
+    last_session_end_utc,
+    last_session_rank,
+    last_session_attempt_count,
+    last_session_fail_count,
+    sessions_in_last_3
+  FROM recent_app_usage
 )
 SELECT
   e.app,
@@ -185,15 +230,47 @@ SELECT
   COALESCE(r.top_review_priority_score, 0.0) AS top_review_priority_score,
   r.top_candidate_item_id,
   r.top_candidate_shown_value,
+  COALESCE(u.last_session_rank, 999) AS last_session_rank,
+  COALESCE(u.last_session_attempt_count, 0) AS last_session_attempt_count,
+  COALESCE(u.last_session_fail_count, 0) AS last_session_fail_count,
+  COALESCE(u.sessions_in_last_3, 0) AS sessions_in_last_3,
+  ROUND(
+    (CASE
+      WHEN COALESCE(u.last_session_rank, 999) = 1
+       AND e.sessions = 1
+       AND COALESCE(u.last_session_fail_count, 0) > 0 THEN 7.0
+      WHEN COALESCE(u.last_session_rank, 999) = 1
+       AND e.sessions = 1 THEN 4.0
+      WHEN COALESCE(u.last_session_rank, 999) = 1
+       AND COALESCE(u.last_session_fail_count, 0) > 0 THEN 4.0
+      WHEN COALESCE(u.last_session_rank, 999) = 1 THEN -2.0
+      ELSE 0.0
+    END)
+    - (CASE WHEN COALESCE(u.sessions_in_last_3, 0) >= 3 THEN 3.0 ELSE 0.0 END)
+  , 2) AS recent_session_adjustment,
   ROUND(
       (COALESCE(r.urgent_review_count, 0) * 4.0)
     + (COALESCE(r.review_candidate_count, 0) * 1.5)
     + (COALESCE(i.nonperfect_items, 0) * 0.75)
     + ((100.0 - e.accuracy_pct) / 10.0)
     + (CASE WHEN e.fails > 0 THEN 1.0 ELSE 0.0 END)
+    + (CASE
+        WHEN COALESCE(u.last_session_rank, 999) = 1
+         AND e.sessions = 1
+         AND COALESCE(u.last_session_fail_count, 0) > 0 THEN 7.0
+        WHEN COALESCE(u.last_session_rank, 999) = 1
+         AND e.sessions = 1 THEN 4.0
+        WHEN COALESCE(u.last_session_rank, 999) = 1
+         AND COALESCE(u.last_session_fail_count, 0) > 0 THEN 4.0
+        WHEN COALESCE(u.last_session_rank, 999) = 1 THEN -2.0
+        ELSE 0.0
+      END)
+    - (CASE WHEN COALESCE(u.sessions_in_last_3, 0) >= 3 THEN 3.0 ELSE 0.0 END)
   , 2) AS next_app_priority_score
 FROM event_counts_by_app e
 LEFT JOIN review_rollup r
   ON e.app = r.app
 LEFT JOIN item_rollup i
-  ON e.app = i.app;
+  ON e.app = i.app
+LEFT JOIN recent_usage u
+  ON e.app = u.app;
