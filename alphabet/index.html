@@ -72,6 +72,17 @@ Coach Hub
   </button>
 </div>
 <div id="agentHandoffItems" class="flex flex-wrap gap-2"></div>
+<div class="grid sm:grid-cols-2 gap-3 items-end">
+<div>
+  <label for="guidedSessionSize" class="block text-xs font-semibold uppercase tracking-wide text-slate-500 mb-2">Session Size</label>
+  <select id="guidedSessionSize" class="w-full rounded-lg border border-emerald-200 bg-white px-3 py-2 text-sm text-slate-700">
+    <option value="5">5 cards</option>
+    <option value="10">10 cards</option>
+    <option value="15">15 cards</option>
+  </select>
+</div>
+<p class="text-xs text-slate-500">Default comes from the coach recommendation, but you can make the review longer.</p>
+</div>
 <button id="guidedStartBtn"
 class="w-full py-3 bg-emerald-700 text-white rounded-xl text-base font-semibold hover:bg-emerald-800">
 Start Recommended Session
@@ -466,6 +477,7 @@ function startSession(){
 function renderAgentHandoffPanel(){
   const handoff=getPendingAlphabetHandoff();
   const panel=document.getElementById("agentHandoffPanel");
+  const sizeSelect=document.getElementById("guidedSessionSize");
   if(!handoff){
     panel.classList.add("hidden");
     document.getElementById("agentHandoffItems").innerHTML="";
@@ -477,6 +489,7 @@ function renderAgentHandoffPanel(){
     handoff.ui_message || `Open alphabet for a ${handoff.session_size}-card recommended session.`;
   document.getElementById("agentHandoffMeta").textContent=
     `${handoff.selection_reason || "Agent guidance available"} · ${handoff.session_size} cards`;
+  if(sizeSelect) sizeSelect.value=String(handoff.session_size);
   const focusItems=Array.isArray(handoff.focus_items) ? handoff.focus_items.slice(0,6) : [];
   document.getElementById("agentHandoffItems").innerHTML=focusItems.length
     ? focusItems.map(item=>`
@@ -496,11 +509,22 @@ show("stats");
 };
 document.getElementById("guidedStartBtn").onclick=()=>{
   const handoff=getPendingAlphabetHandoff();
+  const sizeSelect=document.getElementById("guidedSessionSize");
   if(!handoff){
     renderAgentHandoffPanel();
     return;
   }
-  beginConfiguredSession({ handoff });
+  const sessionSize=Math.max(5, Number(sizeSelect?.value || handoff.session_size));
+  beginConfiguredSession({
+    handoff:{
+      ...handoff,
+      session_size:sessionSize,
+      app_request:{
+        ...handoff.app_request,
+        session_size:sessionSize
+      }
+    }
+  });
 };
 document.getElementById("dismissGuidedBtn").onclick=()=>{
   clearPendingAlphabetHandoff();

@@ -68,6 +68,17 @@
           </button>
         </div>
         <div id="agent-handoff-items" class="flex flex-wrap gap-2"></div>
+        <div class="grid sm:grid-cols-2 gap-3 items-end">
+          <div>
+            <label for="guided-session-size" class="block text-xs font-semibold uppercase tracking-wide text-slate-500 mb-2">Session Size</label>
+            <select id="guided-session-size" class="w-full rounded-lg border border-emerald-200 bg-white px-3 py-2 text-sm text-slate-700">
+              <option value="5">5 cards</option>
+              <option value="10">10 cards</option>
+              <option value="15">15 cards</option>
+            </select>
+          </div>
+          <p class="text-xs text-slate-500">Start with the coach default, or make the guided review a bit longer.</p>
+        </div>
         <button id="guided-start-btn"
           class="w-full py-3 bg-emerald-700 text-white rounded-xl text-base font-semibold hover:bg-emerald-800">
           Start Recommended Session
@@ -595,6 +606,7 @@
       const handoff = getPendingMatrasHandoff();
       const panel = document.getElementById('agent-handoff-panel');
       const itemsEl = document.getElementById('agent-handoff-items');
+      const sizeSelect = document.getElementById('guided-session-size');
       if(!panel || !itemsEl) return;
       if(!handoff){
         panel.classList.add('hidden');
@@ -607,6 +619,7 @@
         handoff.ui_message || `Open matras for a ${handoff.session_size}-card recommended session.`;
       document.getElementById('agent-handoff-meta').textContent =
         `${handoff.selection_reason || 'Agent guidance available'} · ${handoff.session_size} cards`;
+      if(sizeSelect) sizeSelect.value = String(handoff.session_size);
 
       const focusItems = Array.isArray(handoff.focus_items) ? handoff.focus_items.slice(0, 6) : [];
       itemsEl.innerHTML = focusItems.length
@@ -964,11 +977,22 @@
     document.getElementById('btn-weak')?.addEventListener('click', ()=>{ startSession({ weakOnly:true }); });
     document.getElementById('guided-start-btn')?.addEventListener('click', ()=>{
       const handoff = getPendingMatrasHandoff();
+      const sizeSelect = document.getElementById('guided-session-size');
       if(!handoff){
         renderAgentHandoffPanel();
         return;
       }
-      startSession({ handoff });
+      const sessionSize = Math.max(5, Number(sizeSelect?.value || handoff.session_size));
+      startSession({
+        handoff: {
+          ...handoff,
+          session_size: sessionSize,
+          app_request: {
+            ...handoff.app_request,
+            session_size: sessionSize
+          }
+        }
+      });
     });
     document.getElementById('dismiss-guided-btn')?.addEventListener('click', ()=>{
       clearPendingMatrasHandoff();
