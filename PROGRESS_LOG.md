@@ -34,6 +34,7 @@ Append-only session log for resuming work across gaps.
 - Handoff delivery can now be manually targeted to a specific app for chain validation, without changing the recommender.
 - Manual targeted handoffs now save delivery rows automatically, so guided-session evaluation can reconstruct their focus items without needing `--save-run`.
 - Whole-chain validation now has its own report for checking which apps are fully validated and which still need one more clean guided run.
+- The first full end-to-end chain is now validated across all four apps.
 
 ### What Works Now
 
@@ -87,6 +88,7 @@ Append-only session log for resuming work across gaps.
 - `pipeline/check_chain_validation.py` can now:
   - report guided-session validation coverage by app
   - distinguish fully validated apps from apps with only partial guided evidence
+  - confirm when all four apps have completed the same first-pass guided-session loop
 - `pipeline/deliver_recommendation_handoff.py` can now:
   - deliver the normal recommender-selected handoff
   - or deliver a manual app-targeted handoff for validation runs
@@ -142,17 +144,15 @@ Deliver the current handoff into the app environment:
 - Guided-session evaluation is still early and depends on creating more real guided-session data.
 - Guided-session comparisons are now possible, but the sample is still too small for strong conclusions.
 - The new follow-up actions are still heuristic and should be treated as evaluation scaffolding, not final policy.
-- Cross-app chain validation is still incomplete until we run real guided sessions in `alphabet`, `matras`, and `conjuncts`.
-- Cross-app chain validation should now be judged by the validation report rather than by memory or manual note-taking.
+- Cross-app chain validation is now complete for the first-pass advisory loop.
+- Future work should treat this validated chain as the baseline and avoid changing too many moving pieces at once.
 
 ### Immediate Next Step
 
 Use the replay output to refine the deterministic rule engine before adding more autonomy. The most likely next changes are:
 
-- generate more real guided-session data in the Playwright profile
-- use manual targeted handoffs to validate guided-session telemetry in `alphabet`, `matras`, and `conjuncts`
-- inspect guided-session performance, focus-item outcomes, and guided-vs-normal comparisons in DuckDB
-- use guided-session evaluation to decide whether the recommender should repeat, continue, or switch after a guided run
+- use guided-session performance, focus-item outcomes, and guided-vs-normal comparisons to refine the recommender
+- keep major refinements deferred unless they are needed to interpret the validated chain
 - decide how much of the current handoff contract should become the real app command interface
 
 ### Relevant Commits

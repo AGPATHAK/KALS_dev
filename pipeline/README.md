@@ -6,6 +6,11 @@ This folder contains the first Stage 2 implementation for KALS:
 - Python validates raw events against the frozen Stage 1 contract
 - DuckDB stores validated raw events in a local analytical database
 
+Current milestone status:
+
+- the first end-to-end advisory guided-session chain is now validated across all four apps
+- recommendation -> handoff delivery -> app consumption -> telemetry return -> evaluation is working end to end
+
 ## Install
 
 Create a virtual environment if you want:
@@ -195,6 +200,8 @@ This prints:
 - which guided sessions also have reconstructable focus-item evidence
 - which apps are fully validated versus still needing one more clean run
 
+At the current milestone, this report should show all four apps as validated.
+
 ## Notes
 
 - This script is intentionally local-first and small.
@@ -211,6 +218,7 @@ This prints:
 - The analytics layer can now compare guided-session performance against normal-session performance by app.
 - Guided-session evaluation is now separated into its own script so the follow-up decision remains readable and inspectable.
 - Whole-chain validation now has its own report so we can tell when all apps have truly completed the same guided-session path.
+- The current stack should now be treated as a validated baseline before major recommender refinements are introduced.
 
 ## Use The Playwright Browser For Stage 2
 

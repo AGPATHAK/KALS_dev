@@ -22,7 +22,7 @@ This roadmap is written to serve both goals at once. The Kannada apps are the pr
 
 ## Current Status
 
-Current stage: Late Stage 3A / early Stage 3A.5, with the first closed-loop advisory handoff path working across all four apps.
+Current stage: Stage 3A / 3A.5 milestone complete for the first end-to-end chain, with all four apps validated on the advisory guided-session loop.
 
 Repository status at time of writing:
 
@@ -35,6 +35,7 @@ Repository status at time of writing:
 - Recommendation handoffs can be delivered into the app environment through the persistent Playwright profile.
 - All four apps can now consume an advisory handoff through an optional learner-started guided-session path.
 - Guided-session outcomes flow back through the normal telemetry path via `intervention_id`.
+- Whole-chain validation has been completed across `alphabet`, `matras`, `conjuncts`, and `words`.
 
 ## Roadmap Overview
 
@@ -227,7 +228,7 @@ The agent should not make recommendations directly from intuition about raw logs
 
 ## Stage 3A
 
-Status: In progress
+Status: Complete for first-pass baseline
 
 ### Objective
 
@@ -265,7 +266,7 @@ This stage establishes the baseline that every future LLM-assisted version must 
 
 ## Stage 3A.5
 
-Status: In progress
+Status: Complete for first-pass baseline
 
 ### Objective
 
@@ -458,7 +459,7 @@ This is where the system begins to combine local learner evidence with broader p
 
 The next practical sequence should be:
 
-1. Evaluate guided sessions separately from normal sessions using `intervention_id`.
+1. Use the validated first-pass chain as the baseline for recommender refinement.
 2. Compare delivered focus items against what the guided session actually surfaced and how those attempts performed.
 3. Refine the deterministic recommender only after the guided-session evaluation is readable.
 4. Decide whether the current advisory handoff contract is close enough to become the real Stage 5A command interface.
