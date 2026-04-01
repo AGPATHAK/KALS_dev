@@ -22,7 +22,7 @@ This roadmap is written to serve both goals at once. The Kannada apps are the pr
 
 ## Current Status
 
-Current stage: Early Stage 3A baseline, with Stage 1, Stage 2, and Stage 2.5 foundations in place.
+Current stage: Late Stage 3A / early Stage 3A.5, with the first closed-loop advisory handoff path working across all four apps.
 
 Repository status at time of writing:
 
@@ -32,7 +32,9 @@ Repository status at time of writing:
 - Stage 2 ingest is working with a persistent Playwright browser profile and DuckDB.
 - Stage 2.5 analytical views are producing recommendation-ready learner state.
 - A first deterministic next-session recommender baseline exists in `pipeline/recommend_next_session.py`.
-- Apps are not yet command-receptive; recommendations are still advisory rather than closed-loop.
+- Recommendation handoffs can be delivered into the app environment through the persistent Playwright profile.
+- All four apps can now consume an advisory handoff through an optional learner-started guided-session path.
+- Guided-session outcomes flow back through the normal telemetry path via `intervention_id`.
 
 ## Roadmap Overview
 
@@ -81,7 +83,7 @@ Most weak agent systems fail because they start with tools or models instead of 
 
 ## Stage 1
 
-Status: In progress
+Status: Complete
 
 ### Objective
 
@@ -122,6 +124,8 @@ This is the foundation for everything that follows. If the event stream is incom
 
 ## Stage 1.5
 
+Status: Complete
+
 ### Objective
 
 Add explicit telemetry QA before any ETL work begins.
@@ -150,6 +154,8 @@ A broken ingest pipeline is frustrating. A broken ingest pipeline fed by unrelia
 - Known gaps are documented and intentionally accepted or fixed
 
 ## Stage 2
+
+Status: Complete
 
 ### Objective
 
@@ -189,6 +195,8 @@ This stage teaches one of the core agentic AI lessons: the system boundary betwe
 
 ## Stage 2.5
 
+Status: Complete
+
 ### Objective
 
 Create the first decision-ready analytics layer before building any recommender.
@@ -219,6 +227,8 @@ The agent should not make recommendations directly from intuition about raw logs
 
 ## Stage 3A
 
+Status: In progress
+
 ### Objective
 
 Build a deterministic recommender that selects next app, review items, and stop/continue suggestions using explicit rules.
@@ -231,8 +241,8 @@ This stage establishes the baseline that every future LLM-assisted version must 
 
 - Rule engine for next-session recommendations
 - Rule engine for top-priority review items
-- Initial fatigue-aware stop or continue suggestion
 - Recommendation output format that can be logged and evaluated
+- App-facing handoff contract for future guided-session delivery
 
 ### Learning Outcomes
 
@@ -251,8 +261,11 @@ This stage establishes the baseline that every future LLM-assisted version must 
 - Rules are explicit and versioned
 - Recommendations include reasons or feature summaries
 - Outputs can be compared against learner outcomes later
+- A structured handoff contract exists and can be emitted consistently
 
 ## Stage 3A.5
+
+Status: In progress
 
 ### Objective
 
@@ -267,6 +280,7 @@ This stage is where the project shifts from "interesting automation" toward genu
 - Replay harness over historical session data
 - Offline recommendation scoring framework
 - Initial comparison metrics for intervention quality
+- First guided-session evaluation views tied to `intervention_id`
 
 ### Learning Outcomes
 
@@ -278,6 +292,7 @@ This stage is where the project shifts from "interesting automation" toward genu
 
 - Historical sessions can be replayed through the rule engine
 - Recommendation outputs are archived for comparison
+- Guided sessions can be distinguished from normal sessions analytically
 - At least one evaluation report exists with clear findings and limitations
 
 ## Stage 3B
@@ -443,13 +458,12 @@ This is where the system begins to combine local learner evidence with broader p
 
 The next practical sequence should be:
 
-1. Finish Stage 1 instrumentation in `conjuncts` and `words`.
-2. Run Stage 1.5 telemetry QA across all four apps.
-3. Build Stage 2 ingest into DuckDB.
-4. Add Stage 2.5 analytics views before writing recommendation logic.
-5. Implement Stage 3A only after the analytical views are stable.
+1. Evaluate guided sessions separately from normal sessions using `intervention_id`.
+2. Compare delivered focus items against what the guided session actually surfaced and how those attempts performed.
+3. Refine the deterministic recommender only after the guided-session evaluation is readable.
+4. Decide whether the current advisory handoff contract is close enough to become the real Stage 5A command interface.
 
-This keeps the project aligned with the learning goal: understand the system deeply before trying to make it act intelligently.
+This keeps the project aligned with the learning goal: measure the loop you already built before adding more autonomy.
 
 ## Definition of Success
 

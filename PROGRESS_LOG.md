@@ -28,6 +28,7 @@ Append-only session log for resuming work across gaps.
 - `alphabet` now also has an optional app-side consumption path for the same advisory handoff pattern.
 - `matras` now also has an optional app-side consumption path for the same advisory handoff pattern.
 - `conjuncts` now also has an optional app-side consumption path for the same advisory handoff pattern.
+- Guided-session analytics now exist on top of `intervention_id`, so agent-guided sessions can be measured separately from normal sessions.
 
 ### What Works Now
 
@@ -69,6 +70,10 @@ Append-only session log for resuming work across gaps.
   - compare predicted review items against any items actually seen in the target session
   - compare predicted review items against the target session's failed items
   - persist replay evaluation rows in `replay_evaluation_runs`
+- `data/analytics_views.sql` and `pipeline/query_insights.py` can now report:
+  - guided session summaries
+  - guided focus-item outcomes
+  - guided app performance
 
 ### Current Replay Signal
 
@@ -117,15 +122,16 @@ Deliver the current handoff into the app environment:
 - Replay is now slightly softer than before, but it still does not capture concept-level transfer across apps.
 - The apps still do not consume the delivered handoff automatically; the bridge currently writes advisory data only.
 - All four apps now support optional advisory handoff consumption, but the handoff is still learner-started rather than automatically enforced.
+- Guided-session evaluation is still early and depends on creating more real guided-session data.
 
 ### Immediate Next Step
 
 Use the replay output to refine the deterministic rule engine before adding more autonomy. The most likely next changes are:
 
-- make item-level recommendation hits more meaningful for repeated review sessions
+- generate more real guided-session data in the Playwright profile
+- inspect guided-session performance and focus-item outcomes in DuckDB
 - decide how much of the current handoff contract should become the real app command interface
-- evaluate whether the current optional guided-session pattern should remain app-specific or be unified more explicitly
-- decide whether replay should also score partial success when the right app was chosen but the exact recommended item did not appear
+- evaluate whether replay and guided-session metrics are enough before touching the rule engine again
 
 ### Relevant Commits
 

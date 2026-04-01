@@ -274,3 +274,127 @@ LEFT JOIN item_rollup i
   ON e.app = i.app
 LEFT JOIN recent_usage u
   ON e.app = u.app;
+
+CREATE OR REPLACE VIEW delivered_handoffs AS
+SELECT
+  delivery_id,
+  created_at_utc,
+  recommended_app,
+  delivery_mode,
+  verified,
+  focus_item_count,
+  json_extract_string(handoff_json, '$.handoff_id') AS handoff_id,
+  json_extract_string(handoff_json, '$.contract_version') AS contract_version,
+  json_extract_string(handoff_json, '$.selection_policy') AS selection_policy,
+  json_extract_string(handoff_json, '$.selection_reason') AS selection_reason,
+  json_extract_string(handoff_json, '$.top_driver_item_id') AS top_driver_item_id,
+  json_extract_string(handoff_json, '$.top_driver_shown_value') AS top_driver_shown_value,
+  json_extract_string(handoff_json, '$.ui_message') AS ui_message,
+  handoff_json
+FROM handoff_delivery_runs;
+
+CREATE OR REPLACE VIEW guided_session_summary AS
+WITH intervention_events AS (
+  SELECT *
+  FROM raw_attempt_events
+  WHERE intervention_id IS NOT NULL
+),
+session_rollup AS (
+  SELECT
+    intervention_id,
+    session_id,
+    app,
+    MIN(timestamp_utc) AS session_start_utc,
+    MAX(timestamp_utc) AS session_end_utc,
+    COUNT(*) AS attempts,
+    SUM(CASE WHEN result = 'pass' THEN 1 ELSE 0 END) AS passes,
+    SUM(CASE WHEN result = 'fail' THEN 1 ELSE 0 END) AS fails,
+    ROUND(100.0 * SUM(CASE WHEN result = 'pass' THEN 1 ELSE 0 END) / COUNT(*), 1) AS accuracy_pct,
+    ROUND(AVG(response_time_ms), 1) AS avg_response_ms
+  FROM intervention_events
+  GROUP BY intervention_id, session_id, app
+)
+SELECT
+  s.intervention_id,
+  s.session_id,
+  s.app,
+  s.session_start_utc,
+  s.session_end_utc,
+  s.attempts,
+  s.passes,
+  s.fails,
+  s.accuracy_pct,
+  s.avg_response_ms,
+  d.delivery_id,
+  d.created_at_utc AS delivered_at_utc,
+  d.recommended_app,
+  d.delivery_mode,
+  d.verified,
+  d.focus_item_count,
+  d.selection_policy,
+  d.selection_reason,
+  d.top_driver_item_id,
+  d.top_driver_shown_value
+FROM session_rollup s
+LEFT JOIN delivered_handoffs d
+  ON s.intervention_id = d.handoff_id;
+
+CREATE OR REPLACE VIEW guided_focus_item_outcomes AS
+WITH guided_events AS (
+  SELECT
+    intervention_id,
+    session_id,
+    app,
+    item_id,
+    shown_value,
+    result,
+    timestamp_utc
+  FROM raw_attempt_events
+  WHERE intervention_id IS NOT NULL
+),
+expanded_focus_items AS (
+  SELECT
+    h.handoff_id,
+    h.recommended_app,
+    json_extract_string(item.value, '$.item_id') AS focus_item_id,
+    json_extract_string(item.value, '$.shown_value') AS focus_shown_value
+  FROM delivered_handoffs h,
+  json_each(json_extract(h.handoff_json, '$.focus_items')) AS item
+  WHERE h.handoff_id IS NOT NULL
+),
+focus_attempts AS (
+  SELECT
+    f.handoff_id AS intervention_id,
+    g.session_id,
+    COALESCE(g.app, f.recommended_app) AS app,
+    f.focus_item_id,
+    COALESCE(MAX(g.shown_value), MAX(f.focus_shown_value)) AS shown_value,
+    COUNT(g.item_id) AS attempts_on_focus_item,
+    SUM(CASE WHEN g.result = 'pass' THEN 1 ELSE 0 END) AS passes_on_focus_item,
+    SUM(CASE WHEN g.result = 'fail' THEN 1 ELSE 0 END) AS fails_on_focus_item,
+    ROUND(
+      100.0 * SUM(CASE WHEN g.result = 'pass' THEN 1 ELSE 0 END) / NULLIF(COUNT(g.item_id), 0),
+      1
+    ) AS focus_item_accuracy_pct,
+    MAX(g.timestamp_utc) AS last_seen_utc
+  FROM expanded_focus_items f
+  LEFT JOIN guided_events g
+    ON g.intervention_id = f.handoff_id
+   AND g.item_id = f.focus_item_id
+  GROUP BY f.handoff_id, g.session_id, COALESCE(g.app, f.recommended_app), f.focus_item_id
+)
+SELECT *
+FROM focus_attempts;
+
+CREATE OR REPLACE VIEW guided_app_performance AS
+SELECT
+  app,
+  COUNT(*) AS guided_sessions,
+  SUM(attempts) AS guided_attempts,
+  SUM(passes) AS guided_passes,
+  SUM(fails) AS guided_fails,
+  ROUND(100.0 * SUM(passes) / NULLIF(SUM(attempts), 0), 1) AS guided_accuracy_pct,
+  ROUND(AVG(avg_response_ms), 1) AS avg_guided_response_ms,
+  MAX(session_end_utc) AS last_guided_session_utc
+FROM guided_session_summary
+GROUP BY app;

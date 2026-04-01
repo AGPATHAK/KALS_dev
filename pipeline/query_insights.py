@@ -72,6 +72,24 @@ def build_parser() -> argparse.ArgumentParser:
         default=10,
         help="How many recent app usage rows to print.",
     )
+    parser.add_argument(
+        "--guided-session-limit",
+        type=int,
+        default=10,
+        help="How many guided session rows to print.",
+    )
+    parser.add_argument(
+        "--guided-focus-limit",
+        type=int,
+        default=10,
+        help="How many guided focus-item rows to print.",
+    )
+    parser.add_argument(
+        "--guided-app-limit",
+        type=int,
+        default=10,
+        help="How many guided app performance rows to print.",
+    )
     return parser
 
 
@@ -225,6 +243,57 @@ def main() -> int:
             """,
             [args.app_summary_limit],
         ).fetchall()
+
+        guided_sessions = conn.execute(
+            """
+            SELECT
+              app,
+              intervention_id,
+              attempts,
+              passes,
+              fails,
+              accuracy_pct,
+              avg_response_ms,
+              top_driver_item_id
+            FROM guided_session_summary
+            ORDER BY session_end_utc DESC, app ASC
+            LIMIT ?
+            """,
+            [args.guided_session_limit],
+        ).fetchall()
+
+        guided_focus_rows = conn.execute(
+            """
+            SELECT
+              app,
+              intervention_id,
+              focus_item_id,
+              shown_value,
+              attempts_on_focus_item,
+              fails_on_focus_item,
+              focus_item_accuracy_pct
+            FROM guided_focus_item_outcomes
+            ORDER BY last_seen_utc DESC NULLS LAST, app ASC, focus_item_id ASC
+            LIMIT ?
+            """,
+            [args.guided_focus_limit],
+        ).fetchall()
+
+        guided_app_rows = conn.execute(
+            """
+            SELECT
+              app,
+              guided_sessions,
+              guided_attempts,
+              guided_fails,
+              guided_accuracy_pct,
+              avg_guided_response_ms
+            FROM guided_app_performance
+            ORDER BY last_guided_session_utc DESC NULLS LAST, app ASC
+            LIMIT ?
+            """,
+            [args.guided_app_limit],
+        ).fetchall()
     finally:
         conn.close()
 
@@ -272,6 +341,21 @@ def main() -> int:
         "Next-Session App Summary",
         ["app", "review_candidate_count", "urgent_review_count", "nonperfect_items", "accuracy_pct", "last_session_rank", "last_session_fail_count", "recent_session_adjustment", "top_candidate_item_id", "top_candidate_shown_value", "next_app_priority_score"],
         app_summaries,
+    )
+    print_table(
+        "Guided Session Summary",
+        ["app", "intervention_id", "attempts", "passes", "fails", "accuracy_pct", "avg_response_ms", "top_driver_item_id"],
+        guided_sessions,
+    )
+    print_table(
+        "Guided Focus Item Outcomes",
+        ["app", "intervention_id", "focus_item_id", "shown_value", "attempts_on_focus_item", "fails_on_focus_item", "focus_item_accuracy_pct"],
+        guided_focus_rows,
+    )
+    print_table(
+        "Guided App Performance",
+        ["app", "guided_sessions", "guided_attempts", "guided_fails", "guided_accuracy_pct", "avg_guided_response_ms"],
+        guided_app_rows,
     )
     return 0
 

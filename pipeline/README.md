@@ -55,6 +55,9 @@ This prints:
 - prioritized review candidates
 - recent app usage
 - next-session app summary
+- guided session summary
+- guided focus-item outcomes
+- guided app performance
 
 Generate a deterministic next-session recommendation:
 
@@ -169,6 +172,7 @@ Persist replay evaluation rows for later inspection:
 - The delivery bridge currently writes advisory handoffs into:
   - `kals_latest_recommendation_handoff`
   - `kals_pending_recommendation_handoff`
+- Guided sessions can now be evaluated analytically because app-side guided runs write the delivered `handoff_id` back into raw telemetry as `intervention_id`.
 
 ## Use The Playwright Browser For Stage 2
 
