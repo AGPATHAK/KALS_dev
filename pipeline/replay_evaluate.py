@@ -169,18 +169,36 @@ def fetch_actual_failed_items(conn: duckdb.DuckDBPyConnection, session_id: str) 
     return [row[0] for row in rows]
 
 
+def fetch_actual_seen_items(conn: duckdb.DuckDBPyConnection, session_id: str) -> List[str]:
+    rows = conn.execute(
+        """
+        SELECT DISTINCT item_id
+        FROM raw_attempt_events
+        WHERE session_id = ?
+        ORDER BY item_id ASC
+        """,
+        [session_id],
+    ).fetchall()
+    return [row[0] for row in rows]
+
+
 def make_evaluation_row(
     *,
     db_path: Path,
     target_session: tuple,
     prior_event_count: int,
     payload: dict,
+    actual_seen_items: List[str],
     actual_failed_items: List[str],
 ) -> tuple:
     session_id, target_app, session_start_utc, session_end_utc, attempt_count, fail_count = target_session
     predicted_app = payload["recommended_app"]["app"]
     predicted_session_size = payload["recommended_app"]["recommended_session_size"]
     predicted_top_item_ids = [item["item_id"] for item in payload["top_review_items"]]
+    item_seen_count = len(set(predicted_top_item_ids) & set(actual_seen_items))
+    item_seen_rate = None
+    if actual_seen_items:
+        item_seen_rate = round(100.0 * item_seen_count / len(actual_seen_items), 1)
     item_hit_count = len(set(predicted_top_item_ids) & set(actual_failed_items))
     item_hit_rate = None
     if actual_failed_items:
@@ -216,7 +234,10 @@ def make_evaluation_row(
         predicted_session_size,
         predicted_app == target_app,
         json.dumps(predicted_top_item_ids, ensure_ascii=False),
+        json.dumps(actual_seen_items, ensure_ascii=False),
         json.dumps(actual_failed_items, ensure_ascii=False),
+        item_seen_count,
+        item_seen_rate,
         item_hit_count,
         item_hit_rate,
         payload_json,
@@ -246,11 +267,14 @@ def save_evaluations(db_path: Path, rows: List[tuple]) -> None:
               predicted_session_size,
               app_match,
               predicted_top_items_json,
+              actual_seen_items_json,
               actual_failed_items_json,
+              item_seen_count,
+              item_seen_rate,
               item_hit_count,
               item_hit_rate,
               payload_json
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
             rows,
         )
@@ -293,6 +317,7 @@ def main() -> int:
             if not payload:
                 continue
 
+            actual_seen_items = fetch_actual_seen_items(source_conn, session_id)
             actual_failed_items = fetch_actual_failed_items(source_conn, session_id)
             evaluation_rows.append(
                 make_evaluation_row(
@@ -300,6 +325,7 @@ def main() -> int:
                     target_session=target_session,
                     prior_event_count=len(prior_rows),
                     payload=payload,
+                    actual_seen_items=actual_seen_items,
                     actual_failed_items=actual_failed_items,
                 )
             )
@@ -311,10 +337,13 @@ def main() -> int:
 
     replayed_sessions = len(evaluation_rows)
     app_match_count = sum(1 for row in evaluation_rows if row[14] is True)
-    total_failed_items = sum(len(json.loads(row[16])) for row in evaluation_rows)
-    total_item_hits = sum(row[17] for row in evaluation_rows)
+    total_seen_items = sum(len(json.loads(row[16])) for row in evaluation_rows)
+    total_failed_items = sum(len(json.loads(row[17])) for row in evaluation_rows)
+    total_item_seen_hits = sum((row[18] or 0) for row in evaluation_rows)
+    total_item_hits = sum(row[20] for row in evaluation_rows)
     sessions_with_failures = sum(1 for row in evaluation_rows if row[11] > 0)
-    sessions_with_item_hits = sum(1 for row in evaluation_rows if row[17] > 0)
+    sessions_with_item_seen_hits = sum(1 for row in evaluation_rows if (row[18] or 0) > 0)
+    sessions_with_item_hits = sum(1 for row in evaluation_rows if row[20] > 0)
 
     print("Replay Evaluation Summary")
     print(f"- sessions_seen: {len(sessions)}")
@@ -324,9 +353,14 @@ def main() -> int:
     if replayed_sessions:
         print(f"- app_match_rate_pct: {round(100.0 * app_match_count / replayed_sessions, 1)}")
     print(f"- sessions_with_failures: {sessions_with_failures}")
+    print(f"- sessions_with_item_seen_hits: {sessions_with_item_seen_hits}")
     print(f"- sessions_with_item_hits: {sessions_with_item_hits}")
+    print(f"- total_seen_items: {total_seen_items}")
     print(f"- total_failed_items: {total_failed_items}")
+    print(f"- total_item_seen_hits: {total_item_seen_hits}")
     print(f"- total_item_hits: {total_item_hits}")
+    if total_seen_items:
+        print(f"- item_seen_rate_pct: {round(100.0 * total_item_seen_hits / total_seen_items, 1)}")
     if total_failed_items:
         print(f"- item_hit_rate_pct: {round(100.0 * total_item_hits / total_failed_items, 1)}")
     if args.save_run and evaluation_rows:
@@ -339,6 +373,8 @@ def main() -> int:
             "predicted_app",
             "app_match",
             "target_fail_count",
+            "item_seen_count",
+            "item_seen_rate",
             "item_hit_count",
             "item_hit_rate",
             "prior_event_count",
@@ -350,8 +386,10 @@ def main() -> int:
                 row[12],
                 row[14],
                 row[11],
-                row[17],
                 row[18],
+                row[19],
+                row[20],
+                row[21],
                 row[9],
                 row[5],
             )

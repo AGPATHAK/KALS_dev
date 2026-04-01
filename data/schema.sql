@@ -61,8 +61,15 @@ CREATE TABLE IF NOT EXISTS replay_evaluation_runs (
   predicted_session_size INTEGER,
   app_match BOOLEAN,
   predicted_top_items_json VARCHAR NOT NULL,
+  actual_seen_items_json VARCHAR,
   actual_failed_items_json VARCHAR NOT NULL,
+  item_seen_count INTEGER,
+  item_seen_rate DOUBLE,
   item_hit_count INTEGER NOT NULL,
   item_hit_rate DOUBLE,
   payload_json VARCHAR
 );
+
+ALTER TABLE replay_evaluation_runs ADD COLUMN IF NOT EXISTS actual_seen_items_json VARCHAR;
+ALTER TABLE replay_evaluation_runs ADD COLUMN IF NOT EXISTS item_seen_count INTEGER;
+ALTER TABLE replay_evaluation_runs ADD COLUMN IF NOT EXISTS item_seen_rate DOUBLE;

@@ -92,6 +92,7 @@ This prints:
 
 - how many historical sessions could be replayed
 - how often the predicted app matched the learner's actual next app
+- how often the predicted review items appeared anywhere in the target session
 - how often the predicted review items overlapped with later failed items
 - per-session replay rows for inspection
 

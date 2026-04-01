@@ -34,6 +34,7 @@ Append-only session log for resuming work across gaps.
   - rebuild "what the agent knew before session X"
   - run the same deterministic recommender on that snapshot
   - compare predicted app against the learner's actual next app
+  - compare predicted review items against any items actually seen in the target session
   - compare predicted review items against the target session's failed items
   - persist replay evaluation rows in `replay_evaluation_runs`
 
@@ -41,6 +42,7 @@ Append-only session log for resuming work across gaps.
 
 - On the current toy dataset, replay evaluates 7 historical sessions.
 - The present rule baseline now matches the learner's actual next app in 4 of 7 replayed sessions.
+- Item-seen rate is now measurable, which is more useful for repeated review than strict fail overlap alone.
 - Item-hit rate is currently 0.0% on later failed items.
 - This is useful, not discouraging: it shows the replay harness can now measure whether rule changes are helping or not.
 
@@ -68,15 +70,15 @@ Persist replay evaluation rows:
 
 - The current data is still small and ordered by a few manual sessions, so replay metrics are illustrative rather than decisive.
 - The current rule engine over-favors `alphabet` on this dataset.
-- Replay currently scores against actual failed items only; it does not yet score softer notions like "good app choice despite no failure overlap."
+- Replay is now slightly softer than before, but it still does not capture concept-level transfer across apps.
 
 ### Immediate Next Step
 
 Use the replay output to refine the deterministic rule engine before adding more autonomy. The most likely next changes are:
 
-- improve evaluation metrics beyond strict item-failure overlap
 - make item-level recommendation hits more meaningful for repeated review sessions
 - decide how much of the current continuation logic should eventually be exposed to the apps as a command contract
+- decide whether replay should also score partial success when the right app was chosen but the exact recommended item did not appear
 
 ### Relevant Commits
 
