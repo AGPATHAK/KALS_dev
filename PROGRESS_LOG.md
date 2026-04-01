@@ -12,6 +12,75 @@ Append-only session log for resuming work across gaps.
   - known limitations
   - immediate next step
 
+## 2026-04-01
+
+### Current State
+
+- Stage 3A is now split into two working parts:
+  - deterministic recommendation generation
+  - offline replay evaluation against historical sessions
+- Recommendation payloads are structured, versioned, and can be stored in DuckDB.
+- Replay evaluation rows can also be stored in DuckDB for later inspection.
+
+### What Works Now
+
+- `pipeline/recommend_next_session.py` reuses shared recommendation logic and can output:
+  - terminal text
+  - JSON payloads
+  - persisted recommendation runs
+- `pipeline/replay_evaluate.py` can:
+  - rebuild "what the agent knew before session X"
+  - run the same deterministic recommender on that snapshot
+  - compare predicted app against the learner's actual next app
+  - compare predicted review items against the target session's failed items
+  - persist replay evaluation rows in `replay_evaluation_runs`
+
+### Current Replay Signal
+
+- On the current toy dataset, replay evaluates 7 historical sessions.
+- The present rule baseline matches the learner's actual next app in 2 of 7 replayed sessions.
+- Item-hit rate is currently 0.0% on later failed items.
+- This is useful, not discouraging: it shows the replay harness is exposing current recommender bias rather than letting us guess.
+
+### Key Commands To Resume
+
+Run the recommender with structured output:
+
+```bash
+.venv/bin/python pipeline/recommend_next_session.py --refresh-views --format json
+```
+
+Replay-evaluate the recommender:
+
+```bash
+.venv/bin/python pipeline/replay_evaluate.py --refresh-views
+```
+
+Persist replay evaluation rows:
+
+```bash
+.venv/bin/python pipeline/replay_evaluate.py --save-run
+```
+
+### Known Limitations
+
+- The current data is still small and ordered by a few manual sessions, so replay metrics are illustrative rather than decisive.
+- The current rule engine over-favors `alphabet` on this dataset.
+- Replay currently scores against actual failed items only; it does not yet score softer notions like "good app choice despite no failure overlap."
+
+### Immediate Next Step
+
+Use the replay output to refine the deterministic rule engine before adding more autonomy. The most likely next changes are:
+
+- rebalance app-ranking rules so one app does not dominate too easily
+- add a clearer notion of app rotation or recent app usage into the recommendation logic
+- improve evaluation metrics beyond strict item-failure overlap
+
+### Relevant Commits
+
+- `d8a7d10` Shape recommender output as JSON and log recommendation runs
+- `a054c62` Add progress log and update roadmap status
+
 ## 2026-03-31
 
 ### Current State

@@ -43,3 +43,26 @@ CREATE TABLE IF NOT EXISTS recommendation_runs (
   top_driver_shown_value VARCHAR,
   payload_json VARCHAR NOT NULL
 );
+
+CREATE TABLE IF NOT EXISTS replay_evaluation_runs (
+  evaluation_id VARCHAR PRIMARY KEY,
+  created_at_utc TIMESTAMP NOT NULL,
+  source_db_path VARCHAR NOT NULL,
+  evaluation_mode VARCHAR NOT NULL,
+  recommender_version VARCHAR NOT NULL,
+  target_session_id VARCHAR NOT NULL,
+  target_app VARCHAR NOT NULL,
+  target_session_start_utc TIMESTAMP NOT NULL,
+  target_session_end_utc TIMESTAMP NOT NULL,
+  prior_event_count BIGINT NOT NULL,
+  target_attempt_count BIGINT NOT NULL,
+  target_fail_count BIGINT NOT NULL,
+  predicted_app VARCHAR,
+  predicted_session_size INTEGER,
+  app_match BOOLEAN,
+  predicted_top_items_json VARCHAR NOT NULL,
+  actual_failed_items_json VARCHAR NOT NULL,
+  item_hit_count INTEGER NOT NULL,
+  item_hit_rate DOUBLE,
+  payload_json VARCHAR
+);

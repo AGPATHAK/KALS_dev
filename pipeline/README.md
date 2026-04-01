@@ -80,6 +80,25 @@ Persist a recommendation run for later evaluation:
 .venv/bin/python pipeline/recommend_next_session.py --refresh-views --save-run
 ```
 
+Replay-evaluate the deterministic recommender against historical sessions:
+
+```bash
+.venv/bin/python pipeline/replay_evaluate.py --refresh-views
+```
+
+This prints:
+
+- how many historical sessions could be replayed
+- how often the predicted app matched the learner's actual next app
+- how often the predicted review items overlapped with later failed items
+- per-session replay rows for inspection
+
+Persist replay evaluation rows for later inspection:
+
+```bash
+.venv/bin/python pipeline/replay_evaluate.py --save-run
+```
+
 ## Notes
 
 - This script is intentionally local-first and small.
@@ -87,6 +106,7 @@ Persist a recommendation run for later evaluation:
 - Existing local app progress stores are not touched.
 - Playwright uses its own persistent browser profile in `.playwright-profile`.
 - Data created in your normal browser profile is separate from the Playwright profile.
+- Recommendation payloads and replay-evaluation rows can both be stored in DuckDB for later analysis.
 
 ## Use The Playwright Browser For Stage 2
 
