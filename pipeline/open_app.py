@@ -17,6 +17,16 @@ APP_PAGES = {
 }
 
 
+def close_context_safely(context) -> None:
+    try:
+        context.close()
+    except Exception as exc:
+        message = str(exc)
+        if "Connection closed" in message or "Target page, context or browser has been closed" in message:
+            return
+        raise
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description="Open a KALS app in the persistent Playwright browser profile.")
     parser.add_argument("app", choices=sorted(APP_PAGES.keys()), help="App to open")
@@ -49,7 +59,7 @@ def main() -> int:
         except KeyboardInterrupt:
             print("\nClosing Playwright app browser.")
         finally:
-            context.close()
+            close_context_safely(context)
 
     return 0
 
