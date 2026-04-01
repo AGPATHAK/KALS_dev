@@ -306,8 +306,10 @@ def main() -> int:
         finally:
             context.close()
 
+    should_save_run = args.save_run or bool(args.target_app)
+
     delivery_id = None
-    if args.save_run:
+    if should_save_run:
         delivery_id = save_delivery_run(
             db_path=db_path,
             handoff=handoff,

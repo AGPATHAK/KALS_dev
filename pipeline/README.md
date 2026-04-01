@@ -117,7 +117,7 @@ For chain validation, you can also force a manual handoff for a specific app:
 .venv/bin/python pipeline/deliver_recommendation_handoff.py --target-app alphabet --focus-item-id alpha.L008 --session-size 5
 ```
 
-This is useful when you want to validate the full guided-session loop for a specific app even if the recommender is currently choosing a different one.
+This is useful when you want to validate the full guided-session loop for a specific app even if the recommender is currently choosing a different one. Manual targeted handoffs are now saved automatically into `handoff_delivery_runs`, so guided-session evaluation can reconstruct their intended focus items.
 
 Current app-side consumer:
 

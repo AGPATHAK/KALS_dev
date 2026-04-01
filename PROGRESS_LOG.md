@@ -32,6 +32,7 @@ Append-only session log for resuming work across gaps.
 - Guided-session analytics can now compare agent-guided sessions against normal sessions by app.
 - Guided-session evaluation now has its own follow-up report for deciding whether the agent should repeat the same app, continue it, or switch.
 - Handoff delivery can now be manually targeted to a specific app for chain validation, without changing the recommender.
+- Manual targeted handoffs now save delivery rows automatically, so guided-session evaluation can reconstruct their focus items without needing `--save-run`.
 
 ### What Works Now
 
@@ -85,6 +86,7 @@ Append-only session log for resuming work across gaps.
 - `pipeline/deliver_recommendation_handoff.py` can now:
   - deliver the normal recommender-selected handoff
   - or deliver a manual app-targeted handoff for validation runs
+  - automatically persist manual validation handoffs into `handoff_delivery_runs`
 
 ### Current Replay Signal
 
