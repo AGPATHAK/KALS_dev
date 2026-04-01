@@ -72,6 +72,10 @@
           Clear Pending
         </button>
       </div>
+
+      <p id="recommendation-note" class="text-sm text-slate-500">
+        The recommended session opens in a new tab so this hub stays available while you practice.
+      </p>
     </section>
 
     <section class="bg-white rounded-3xl shadow-soft p-6 md:p-8 space-y-5">
@@ -100,6 +104,31 @@
           <div class="text-lg font-semibold">Words</div>
           <div class="text-sm text-slate-600 mt-1">Self-scored whole-word recognition</div>
         </button>
+      </div>
+    </section>
+
+    <section class="bg-white rounded-3xl shadow-soft p-6 md:p-8 space-y-5">
+      <div>
+        <p class="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">After Practice</p>
+        <h2 class="text-xl font-bold mt-2">Run These Commands</h2>
+        <p class="text-sm text-slate-600 mt-2">
+          After you finish a practice tab and stop the Playwright launcher with <span class="font-semibold">Ctrl+C</span>, run these in the terminal to ingest the latest data and refresh the next recommendation.
+        </p>
+      </div>
+
+      <div class="grid gap-4">
+        <div class="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+          <div class="text-xs uppercase tracking-wide text-slate-500 mb-2">Ingest Latest Practice Data</div>
+          <pre class="overflow-x-auto text-sm text-slate-800"><code>.venv/bin/python pipeline/ingest_events.py</code></pre>
+        </div>
+        <div class="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+          <div class="text-xs uppercase tracking-wide text-slate-500 mb-2">Generate and Deliver the Next Recommendation</div>
+          <pre class="overflow-x-auto text-sm text-slate-800"><code>.venv/bin/python pipeline/deliver_recommendation_handoff.py --save-run</code></pre>
+        </div>
+        <div class="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+          <div class="text-xs uppercase tracking-wide text-slate-500 mb-2">Optional: Inspect The Updated Evaluation</div>
+          <pre class="overflow-x-auto text-sm text-slate-800"><code>.venv/bin/python pipeline/evaluate_guided_sessions.py --refresh-views</code></pre>
+        </div>
       </div>
     </section>
 
@@ -157,6 +186,7 @@
         const targetSize = document.getElementById("target-size");
         const targetPolicy = document.getElementById("target-policy");
         const startBtn = document.getElementById("start-recommended-btn");
+        const note = document.getElementById("recommendation-note");
 
         if (!active) {
           title.textContent = "No recommendation available";
@@ -168,6 +198,7 @@
           targetPolicy.textContent = "—";
           startBtn.disabled = true;
           startBtn.dataset.targetApp = "";
+          note.textContent = "When a pending recommendation exists, the recommended session will open in a new tab from this hub.";
           renderFocusItems([]);
           return;
         }
@@ -184,6 +215,9 @@
         targetPolicy.textContent = active.selection_policy || "—";
         startBtn.disabled = !hasPending || !APP_PATHS[app];
         startBtn.dataset.targetApp = hasPending ? app : "";
+        note.textContent = hasPending
+          ? "This recommended session will open in a new tab so you can return here after practice."
+          : "This is only the latest saved recommendation. Run the pipeline refresh commands below to create a new pending recommendation.";
         renderFocusItems(active.focus_items || []);
       }
 
@@ -195,14 +229,14 @@
       document.getElementById("start-recommended-btn").addEventListener("click", (event) => {
         const app = event.currentTarget.dataset.targetApp;
         if (!app || !APP_PATHS[app]) return;
-        window.location.href = appHref(app);
+        window.open(appHref(app), "_blank", "noopener");
       });
 
       document.querySelectorAll(".app-launch").forEach((button) => {
         button.addEventListener("click", () => {
           const app = button.dataset.app;
           if (!APP_PATHS[app]) return;
-          window.location.href = appHref(app);
+          window.open(appHref(app), "_blank", "noopener");
         });
       });
 

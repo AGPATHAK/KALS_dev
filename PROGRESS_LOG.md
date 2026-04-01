@@ -36,6 +36,7 @@ Append-only session log for resuming work across gaps.
 - Whole-chain validation now has its own report for checking which apps are fully validated and which still need one more clean guided run.
 - The first full end-to-end chain is now validated across all four apps.
 - A browser-side coach hub now exists as the first non-terminal control surface for launching recommended practice.
+- The practice flow is now smoother: the coach opens apps in new tabs, shows the post-practice pipeline commands, and every app exposes a direct `Coach Hub` return shortcut in its header.
 
 ### What Works Now
 

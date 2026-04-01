@@ -90,8 +90,9 @@ Open the browser-side coach hub in the persistent Playwright profile:
 The coach hub can:
 
 - show the current pending or latest recommendation
-- launch the recommended app from the browser
-- open any practice app directly for normal use
+- launch the recommended app from the browser in a new tab
+- open any practice app directly for normal use in a new tab
+- keep the coach hub available while you practice
 - reduce the need to trigger app launches from bash during real practice
 
 Structured JSON output:
@@ -156,6 +157,7 @@ Current app-side consumer:
 - `words` shows an `Agent-Guided Session` panel when a valid pending handoff exists
 - starting that guided session prioritizes the recommended word IDs and then fills the rest of the deck normally
 - the pending handoff is consumed on guided start, while the latest delivered handoff remains available for inspection
+- all four apps now include a visible `Coach Hub` shortcut in the header so returning from practice is straightforward
 
 Persist a recommendation run for later evaluation:
 
