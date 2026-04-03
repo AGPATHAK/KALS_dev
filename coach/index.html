@@ -79,6 +79,9 @@
       <div id="refresh-status"
         class="hidden rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-600">
       </div>
+      <p class="text-xs text-slate-500">
+        When a practice tab finishes a session, the coach will try to refresh automatically through the local coach service.
+      </p>
     </section>
 
     <section class="bg-white rounded-3xl shadow-soft p-6 md:p-8 space-y-5">
@@ -152,6 +155,7 @@
     (() => {
       const LATEST_HANDOFF_KEY = "kals_latest_recommendation_handoff";
       const PENDING_HANDOFF_KEY = "kals_pending_recommendation_handoff";
+      const SESSION_COMPLETE_EVENT_KEY = "kals_session_complete_event";
       const CONTROL_API_BASE = "http://127.0.0.1:8765";
       const COACH_WINDOW_NAME = "kals-coach-hub";
       const APP_PATHS = {
@@ -191,12 +195,35 @@
         el.textContent = message;
       }
 
-      async function refreshViaControlPlane() {
+      function describeRefreshOutcome({ sourceApp, nextApp, insertedCount, sameApp, isAuto }) {
+        const attemptsText = insertedCount === 1 ? "1 new attempt" : `${insertedCount} new attempts`;
+        if (isAuto) {
+          if (sameApp) {
+            return `Processed ${attemptsText} from ${sourceApp}. ${nextApp} is still the next recommendation because its review pressure remains highest.`;
+          }
+          return `Processed ${attemptsText} from ${sourceApp}. The next recommendation is now ${nextApp}.`;
+        }
+        if (sameApp) {
+          return `Processed ${attemptsText}. ${nextApp} remains the top recommendation right now.`;
+        }
+        return `Processed ${attemptsText}. The next recommendation is now ${nextApp}.`;
+      }
+
+      async function refreshViaControlPlane(trigger = "manual") {
         const refreshBtn = document.getElementById("refresh-btn");
         const previous = readJson(PENDING_HANDOFF_KEY) || readJson(LATEST_HANDOFF_KEY);
         const previousApp = previous?.target_app || previous?.app_request?.app || null;
+        const isAuto = trigger !== "manual";
+        const sourceApp = isAuto && typeof trigger === "string" && trigger.startsWith("session_complete:")
+          ? trigger.split(":")[1] || "practice"
+          : null;
         refreshBtn.disabled = true;
-        setRefreshStatus("Refreshing recommendation from the local coach service...", "neutral");
+        setRefreshStatus(
+          isAuto
+            ? `Finished ${sourceApp || "practice"} session. Refreshing recommendation from the local coach service...`
+            : "Refreshing recommendation from the local coach service...",
+          "neutral"
+        );
         try {
           const events = readJson("kjt_events") || [];
           const response = await fetch(`${CONTROL_API_BASE}/refresh`, {
@@ -218,16 +245,20 @@
           const summary = payload.ingest_summary || {};
           const nextApp = payload.recommendation?.recommended_app?.app || payload.recommendation?.handoff?.target_app || "the same app";
           const sameApp = previousApp && nextApp === previousApp;
-          const guidance = sameApp
-            ? ` Still recommending ${nextApp} because the ranking is cumulative and recent corrections have not yet outweighed earlier misses.`
-            : ` Next recommendation is ${nextApp}.`;
           setRefreshStatus(
-            `Updated coach recommendation. Inserted ${summary.inserted || 0} new event(s) and skipped ${summary.duplicates || 0} duplicate(s).${guidance}`,
+            `${isAuto ? "Auto-updated" : "Updated"} coach recommendation. ` +
+            describeRefreshOutcome({
+              sourceApp: sourceApp || "practice",
+              nextApp,
+              insertedCount: summary.inserted || 0,
+              sameApp,
+              isAuto,
+            }),
             "success"
           );
         } catch (error) {
           setRefreshStatus(
-            "Live refresh could not reach the local coach service. Start `.venv/bin/python pipeline/coach_control_server.py` or use the fallback terminal commands below.",
+            `${isAuto ? "Auto-refresh" : "Live refresh"} could not reach the local coach service. Start \`.venv/bin/python pipeline/coach_control_server.py\` or use the fallback terminal commands below.`,
             "error"
           );
         } finally {
@@ -296,7 +327,7 @@
         renderFocusItems(active.focus_items || []);
       }
 
-      document.getElementById("refresh-btn").addEventListener("click", refreshViaControlPlane);
+      document.getElementById("refresh-btn").addEventListener("click", () => refreshViaControlPlane("manual"));
       document.getElementById("clear-pending-btn").addEventListener("click", () => {
         localStorage.removeItem(PENDING_HANDOFF_KEY);
         renderRecommendation();
@@ -314,6 +345,27 @@
           if (!APP_PATHS[app]) return;
           window.open(appHref(app), appWindowName(app));
         });
+      });
+
+      window.addEventListener("storage", (event) => {
+        if (event.key === PENDING_HANDOFF_KEY || event.key === LATEST_HANDOFF_KEY) {
+          renderRecommendation();
+          return;
+        }
+        if (event.key !== SESSION_COMPLETE_EVENT_KEY || !event.newValue) return;
+        let payload = null;
+        try {
+          payload = JSON.parse(event.newValue);
+        } catch {
+          payload = null;
+        }
+        const app = payload?.app || "practice";
+        setRefreshStatus(`Detected a completed ${app} session. Refreshing the coach...`, "neutral");
+        refreshViaControlPlane(`session_complete:${app}`);
+      });
+
+      window.addEventListener("focus", () => {
+        renderRecommendation();
       });
 
       renderRecommendation();

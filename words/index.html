@@ -405,6 +405,7 @@ const WORDS = [
 const PROG_KEY = 'kn_words_progress_v1';
 const LATEST_HANDOFF_KEY = 'kals_latest_recommendation_handoff';
 const PENDING_HANDOFF_KEY = 'kals_pending_recommendation_handoff';
+const SESSION_COMPLETE_EVENT_KEY = 'kals_session_complete_event';
 
 function loadProg() {
   try {
@@ -886,7 +887,25 @@ function finishSession() {
       <div class="text-2xl font-bold mt-1">${val}</div>
     </div>`).join('');
 
+  publishSessionComplete({
+    app:'words',
+    total: session.reviewed,
+    correct: session.correct,
+    wrong: session.wrong,
+    accuracy_pct: acc,
+    mode: session.mode || 'recognition',
+    intervention_id: session.handoff?.handoff_id || null
+  });
   show('end');
+}
+
+function publishSessionComplete(summary){
+  try{
+    localStorage.setItem(SESSION_COMPLETE_EVENT_KEY, JSON.stringify({
+      ...summary,
+      completed_at_utc: new Date().toISOString()
+    }));
+  }catch{}
 }
 
 function clearSession() {

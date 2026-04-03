@@ -135,6 +135,7 @@ The coach hub can:
 - open any practice app directly for normal use in a reusable app tab
 - keep the coach hub available while you practice
 - reduce the need to trigger app launches from bash during real practice
+- auto-refresh the next recommendation after a practice session finishes when the local coach control server is running
 
 For a smoother real-practice loop, start the local coach control server in a separate terminal:
 
@@ -149,6 +150,8 @@ When that server is running, the coach hub `Refresh Recommendation` button will:
 - save recommendation and delivery rows
 - update the pending/latest handoff in browser storage without terminating the browser session
 - explain when the recommendation stays on the same app because review pressure is still cumulative
+
+The practice apps now also emit a lightweight `kals_session_complete_event` into browser storage when a session ends. If the coach hub is open while the local control server is running, it listens for that event and attempts an automatic in-browser refresh after session completion.
 
 If the server is not running, the coach hub still shows the fallback terminal commands for the validated manual refresh path.
 

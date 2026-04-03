@@ -312,6 +312,7 @@ const LETTERS = [
 const STORAGE_KEY="kannada_alphabet_progress_v1";
 const LATEST_HANDOFF_KEY="kals_latest_recommendation_handoff";
 const PENDING_HANDOFF_KEY="kals_pending_recommendation_handoff";
+const SESSION_COMPLETE_EVENT_KEY="kals_session_complete_event";
 
 /* ================= STORAGE ================= */
 
@@ -754,6 +755,24 @@ recordSession(total,accuracy);
 saveProgress(progress);
 renderDashboard();
 renderAgentHandoffPanel();
+publishSessionComplete({
+  app:"alphabet",
+  total,
+  correct:session.score,
+  wrong:mistakes.length,
+  accuracy_pct:accuracy,
+  mode:session.mode,
+  intervention_id:session?.handoff?.handoff_id || null
+});
+}
+
+function publishSessionComplete(summary){
+try{
+localStorage.setItem(SESSION_COMPLETE_EVENT_KEY,JSON.stringify({
+...summary,
+completed_at_utc:new Date().toISOString()
+}));
+}catch{}
 }
 
 function recordSession(total,accuracy){

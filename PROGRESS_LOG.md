@@ -42,6 +42,7 @@ Append-only session log for resuming work across gaps.
 - Guided review now uses a smaller focus subset in short handoffs so app-side Leitner-lite spacing can actually resurface weak items instead of filling the whole session with distinct targets.
 - Stage 3B now has a working manual-first reflective layer: curated context, bounded prompt construction, offline ChatGPT reflection import, optional OpenAI calling later, and persistent reflection logging.
 - Manual ChatGPT reflections can now also be imported and logged into DuckDB, so Stage 3B can be tested offline without an API key while still preserving comparison history.
+- Stage 4 has now started in a minimal advisory form: apps emit a session-complete signal and the coach can auto-refresh the next recommendation in-browser when the local control server is running.
 
 ### What Works Now
 
@@ -103,6 +104,7 @@ Append-only session log for resuming work across gaps.
   - open any app directly for normal practice
   - call a local coach control server to ingest browser events and refresh the next recommendation in place
   - reuse named coach/app tabs instead of multiplying browser pages during practice
+  - listen for session-complete signals from app tabs and auto-refresh the next recommendation in-browser
 - `pipeline/deliver_recommendation_handoff.py` can now:
   - deliver the normal recommender-selected handoff
   - or deliver a manual app-targeted handoff for validation runs
@@ -112,6 +114,9 @@ Append-only session log for resuming work across gaps.
   - ingest them into DuckDB without reopening the Playwright profile
   - recompute the deterministic recommendation
   - persist recommendation and delivery rows for the refreshed handoff
+- all four apps can now:
+  - emit a lightweight `kals_session_complete_event` into browser storage when a session ends
+  - trigger coach-side auto-refresh when the coach tab and local control server are available
 - `pipeline/start_coach_practice.py` can now:
   - start the local coach control server
   - open the coach hub in the persistent Playwright profile
@@ -180,6 +185,7 @@ Deliver the current handoff into the app environment:
 - Cross-app chain validation is now complete for the first-pass advisory loop.
 - Future work should treat this validated chain as the baseline and avoid changing too many moving pieces at once.
 - Recommendation refresh is smoother now, but it depends on keeping the local coach control server running in a separate terminal during practice.
+- Stage 4 is only partially started: session completion now drives refresh, but the loop is still advisory and does not yet include richer in-session timing decisions.
 - Manual reflection import currently assumes the current deterministic context is the one the pasted ChatGPT response refers to; if you want perfect historical alignment, import soon after generating the prompt.
 
 ### Immediate Next Step
@@ -191,7 +197,7 @@ Use the smoother coach-led refresh loop and the new Stage 3B manual import path 
 - use guided-session performance, focus-item outcomes, and guided-vs-normal comparisons to refine the recommender once the real-practice sample is less toy-like
 - keep major refinements deferred unless they are needed to interpret the validated chain
 - decide how much of the current handoff contract should become the real app command interface
-- then move into Stage 4 by letting session completion drive an in-browser recommendation refresh loop rather than relying on explicit manual refresh as the main interaction
+- continue Stage 4 by building on the new session-complete auto-refresh loop rather than relying on explicit manual refresh as the main interaction
 
 ### Relevant Commits
 

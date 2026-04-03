@@ -303,6 +303,7 @@
 
     const WEAK_DEFAULTS = { minAttempts: 8, threshold: 0.99 };
     const PENDING_HANDOFF_KEY = 'kals_pending_recommendation_handoff';
+    const SESSION_COMPLETE_EVENT_KEY = 'kals_session_complete_event';
 
     function isWeak(row, progress, minAttempts=WEAK_DEFAULTS.minAttempts, threshold=WEAK_DEFAULTS.threshold){
       const st = progress.itemStats?.[String(row.id)];
@@ -880,7 +881,25 @@
       HistoryStore.write(history);
       renderQuickStats();
       renderAgentHandoffPanel();
+      publishSessionComplete({
+        app:'matras',
+        total,
+        correct,
+        wrong: session.mistakes.length,
+        accuracy_pct: acc,
+        mode: session.sessionMode,
+        intervention_id: session?.handoff?.handoff_id || null
+      });
       show('results');
+    }
+
+    function publishSessionComplete(summary){
+      try{
+        localStorage.setItem(SESSION_COMPLETE_EVENT_KEY, JSON.stringify({
+          ...summary,
+          completed_at_utc: new Date().toISOString()
+        }));
+      }catch{}
     }
 
     function renderQuickStats(){

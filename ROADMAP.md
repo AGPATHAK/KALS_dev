@@ -22,7 +22,7 @@ This roadmap is written to serve both goals at once. The Kannada apps are the pr
 
 ## Current Status
 
-Current stage: Stage 3A / 3A.5 complete for the validated baseline, with Stage 3B now working in a bounded manual-first form.
+Current stage: Stage 3A / 3A.5 complete for the validated baseline, with Stage 3B working in a bounded manual-first form and Stage 4 now started through a session-complete auto-refresh loop.
 
 Repository status at time of writing:
 
@@ -38,6 +38,7 @@ Repository status at time of writing:
 - Whole-chain validation has been completed across `alphabet`, `matras`, `conjuncts`, and `words`.
 - A lightweight local coach control layer now exists so real practice can refresh recommendations without dropping back into a terminal-only loop.
 - Stage 3B now has a working reflective-layer scaffold that reads curated summaries, builds bounded prompts, supports offline manual ChatGPT reflection import, and can later call an API-backed model without replacing the deterministic baseline.
+- Stage 4 has now started in a minimal advisory form: practice apps emit a session-complete signal and the coach can refresh the next recommendation automatically in-browser when the local control server is running.
 
 ## Roadmap Overview
 
@@ -338,6 +339,8 @@ This stage teaches the right role for LLMs in agentic systems: they are best use
 
 ## Stage 4
 
+Status: Started in minimal advisory form
+
 ### Objective
 
 Introduce a near-real-time, in-session agent loop that can perceive active learner behavior and make timing-sensitive decisions.
@@ -370,6 +373,7 @@ This is the most operationally complex stage. It is where the project moves from
 - Live interventions are bounded and reversible
 - Every intervention is logged with timing and rationale
 - The system can run a full session without losing state or corrupting telemetry
+- Session completion can drive an in-browser recommendation refresh loop without returning to explicit manual refresh as the main interaction
 
 ## Stage 5A
 
