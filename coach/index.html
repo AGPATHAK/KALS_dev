@@ -46,7 +46,7 @@
           <div id="target-size" class="text-xl font-semibold mt-2">—</div>
         </div>
         <div class="rounded-2xl border border-slate-200 bg-slate-50 p-4">
-          <div class="text-xs uppercase tracking-wide text-slate-500">Selection Policy</div>
+          <div class="text-xs uppercase tracking-wide text-slate-500">Why Now</div>
           <div id="target-policy" class="text-xl font-semibold mt-2">—</div>
         </div>
       </div>
@@ -65,11 +65,11 @@
         </button>
         <button id="refresh-btn"
           class="rounded-2xl border border-slate-300 px-5 py-3 font-semibold hover:bg-slate-50">
-          Refresh Recommendation
+          Refresh Now
         </button>
         <button id="clear-pending-btn"
           class="rounded-2xl border border-rose-200 px-5 py-3 font-semibold text-rose-600 hover:bg-rose-50">
-          Clear Pending
+          Dismiss Pending
         </button>
       </div>
 
@@ -80,7 +80,7 @@
         class="hidden rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-600">
       </div>
       <p class="text-xs text-slate-500">
-        When a practice tab finishes a session, the coach will try to refresh automatically through the local coach service.
+        When a practice tab finishes a session, the coach will usually refresh automatically. Use `Refresh Now` only if you want to force an update, and `Dismiss Pending` only if you want to skip the current guided suggestion while keeping it visible as the latest recommendation.
       </p>
     </section>
 
@@ -213,6 +213,19 @@
         return String(value).charAt(0).toUpperCase() + String(value).slice(1);
       }
 
+      function humanizePolicy(selectionPolicy, selectionReason) {
+        if (selectionReason) {
+          return selectionReason
+            .replace(/^continue the most recent app because /i, "")
+            .replace(/^choose the app with /i, "")
+            .replace(/^the /i, "")
+            .replace(/\.$/, "");
+        }
+        if (selectionPolicy === "continue_recent_app") return "recent work still needs follow-up";
+        if (selectionPolicy === "highest_priority") return "strongest current review need";
+        return "current coach recommendation";
+      }
+
       function setRefreshStatus(message, tone = "neutral") {
         const el = document.getElementById("refresh-status");
         if (!message) {
@@ -233,14 +246,14 @@
         const attemptsText = insertedCount === 1 ? "1 new attempt" : `${insertedCount} new attempts`;
         if (isAuto) {
           if (sameApp) {
-            return `Processed ${attemptsText} from ${sourceApp}. ${nextApp} is still the next recommendation because its review pressure remains highest.`;
+            return `Processed ${attemptsText} from ${sourceApp}. Next up is still ${nextApp}.`;
           }
-          return `Processed ${attemptsText} from ${sourceApp}. The next recommendation is now ${nextApp}.`;
+          return `Processed ${attemptsText} from ${sourceApp}. Next up is now ${nextApp}.`;
         }
         if (sameApp) {
-          return `Processed ${attemptsText}. ${nextApp} remains the top recommendation right now.`;
+          return `Processed ${attemptsText}. Next up is still ${nextApp}.`;
         }
-        return `Processed ${attemptsText}. The next recommendation is now ${nextApp}.`;
+        return `Processed ${attemptsText}. Next up is now ${nextApp}.`;
       }
 
       async function refreshViaControlPlane(trigger = "manual") {
@@ -254,7 +267,7 @@
         refreshBtn.disabled = true;
         setRefreshStatus(
           isAuto
-            ? `Finished ${sourceApp || "practice"} session. Refreshing recommendation from the local coach service...`
+            ? `Finished ${sourceApp || "practice"} session. Refreshing the coach...`
             : "Refreshing recommendation from the local coach service...",
           "neutral"
         );
@@ -280,7 +293,7 @@
           const nextApp = payload.recommendation?.recommended_app?.app || payload.recommendation?.handoff?.target_app || "the same app";
           const sameApp = previousApp && nextApp === previousApp;
           setRefreshStatus(
-            `${isAuto ? "Auto-updated" : "Updated"} coach recommendation. ` +
+            `${isAuto ? "Coach updated." : "Coach refreshed."} ` +
             describeRefreshOutcome({
               sourceApp: sourceApp || "practice",
               nextApp,
@@ -378,12 +391,12 @@
           : "rounded-full bg-amber-100 px-3 py-1 text-xs font-semibold text-amber-700";
         targetApp.textContent = app;
         targetSize.textContent = String(active.session_size || active.app_request?.session_size || "—");
-        targetPolicy.textContent = active.selection_policy || "—";
+        targetPolicy.textContent = humanizePolicy(active.selection_policy, active.selection_reason);
         startBtn.disabled = !hasPending || !APP_PATHS[app];
         startBtn.dataset.targetApp = hasPending ? app : "";
         note.textContent = hasPending
-          ? "This recommended session will open in a new tab so you can return here after practice."
-          : "This is only the latest saved recommendation. Run the pipeline refresh commands below to create a new pending recommendation.";
+          ? "Start this guided session if you want to follow the coach's next suggested step."
+          : "This is only the latest saved recommendation. A fresh pending session will appear after the next coach refresh.";
         renderFocusItems(active.focus_items || []);
         renderLastSession();
       }
@@ -392,7 +405,7 @@
       document.getElementById("clear-pending-btn").addEventListener("click", () => {
         localStorage.removeItem(PENDING_HANDOFF_KEY);
         renderRecommendation();
-        setRefreshStatus("Cleared the pending recommendation from browser storage.", "neutral");
+        setRefreshStatus("Dismissed the current pending guided session. The latest recommendation is still shown above for reference.", "neutral");
       });
       document.getElementById("start-recommended-btn").addEventListener("click", (event) => {
         const app = event.currentTarget.dataset.targetApp;
