@@ -43,6 +43,7 @@ Append-only session log for resuming work across gaps.
 - Stage 3B now has a working manual-first reflective layer: curated context, bounded prompt construction, offline ChatGPT reflection import, optional OpenAI calling later, and persistent reflection logging.
 - Manual ChatGPT reflections can now also be imported and logged into DuckDB, so Stage 3B can be tested offline without an API key while still preserving comparison history.
 - Stage 4 has now started in a minimal advisory form: apps emit a session-complete signal and the coach can auto-refresh the next recommendation in-browser when the local control server is running.
+- The coach now also shows a compact last-session summary, so the refreshed recommendation has immediate context from the session that just ended.
 
 ### What Works Now
 
@@ -105,6 +106,7 @@ Append-only session log for resuming work across gaps.
   - call a local coach control server to ingest browser events and refresh the next recommendation in place
   - reuse named coach/app tabs instead of multiplying browser pages during practice
   - listen for session-complete signals from app tabs and auto-refresh the next recommendation in-browser
+  - show a compact summary of the most recently finished session
 - `pipeline/deliver_recommendation_handoff.py` can now:
   - deliver the normal recommender-selected handoff
   - or deliver a manual app-targeted handoff for validation runs

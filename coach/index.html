@@ -84,6 +84,35 @@
       </p>
     </section>
 
+    <section id="last-session-section" class="hidden bg-white rounded-3xl shadow-soft p-6 md:p-8 space-y-5">
+      <div>
+        <p class="text-xs font-semibold uppercase tracking-[0.2em] text-sky-700">Last Session</p>
+        <h2 id="last-session-title" class="text-xl font-bold mt-2">No recent session yet</h2>
+        <p id="last-session-subtitle" class="text-sm text-slate-600 mt-2">
+          Finish a practice run to see the latest session summary here.
+        </p>
+      </div>
+
+      <div class="grid md:grid-cols-4 gap-4">
+        <div class="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+          <div class="text-xs uppercase tracking-wide text-slate-500">Accuracy</div>
+          <div id="last-session-accuracy" class="text-xl font-semibold mt-2">—</div>
+        </div>
+        <div class="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+          <div class="text-xs uppercase tracking-wide text-slate-500">Correct</div>
+          <div id="last-session-correct" class="text-xl font-semibold mt-2">—</div>
+        </div>
+        <div class="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+          <div class="text-xs uppercase tracking-wide text-slate-500">Wrong</div>
+          <div id="last-session-wrong" class="text-xl font-semibold mt-2">—</div>
+        </div>
+        <div class="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+          <div class="text-xs uppercase tracking-wide text-slate-500">Mode</div>
+          <div id="last-session-mode" class="text-xl font-semibold mt-2">—</div>
+        </div>
+      </div>
+    </section>
+
     <section class="bg-white rounded-3xl shadow-soft p-6 md:p-8 space-y-5">
       <div>
         <p class="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">Practice Launcher</p>
@@ -177,6 +206,11 @@
 
       function appWindowName(app) {
         return `kals-practice-${app}`;
+      }
+
+      function titleCase(value) {
+        if (!value) return "Practice";
+        return String(value).charAt(0).toUpperCase() + String(value).slice(1);
       }
 
       function setRefreshStatus(message, tone = "neutral") {
@@ -279,6 +313,31 @@
         `).join("");
       }
 
+      function renderLastSession() {
+        const section = document.getElementById("last-session-section");
+        const summary = readJson(SESSION_COMPLETE_EVENT_KEY);
+        if (!summary) {
+          section.classList.add("hidden");
+          return;
+        }
+
+        section.classList.remove("hidden");
+        document.getElementById("last-session-title").textContent =
+          `${titleCase(summary.app)} session complete`;
+        document.getElementById("last-session-subtitle").textContent =
+          summary.intervention_id
+            ? "This was an agent-guided session. The coach used it to refresh the next recommendation."
+            : "This was a normal session. The coach used it to refresh the next recommendation.";
+        document.getElementById("last-session-accuracy").textContent =
+          summary.accuracy_pct != null ? `${summary.accuracy_pct}%` : "—";
+        document.getElementById("last-session-correct").textContent =
+          summary.correct != null ? String(summary.correct) : "—";
+        document.getElementById("last-session-wrong").textContent =
+          summary.wrong != null ? String(summary.wrong) : "—";
+        document.getElementById("last-session-mode").textContent =
+          summary.mode ? String(summary.mode) : "—";
+      }
+
       function renderRecommendation() {
         const pending = readJson(PENDING_HANDOFF_KEY);
         const latest = readJson(LATEST_HANDOFF_KEY);
@@ -306,6 +365,7 @@
           startBtn.dataset.targetApp = "";
           note.textContent = "When a pending recommendation exists, the recommended session will open in a new tab from this hub.";
           renderFocusItems([]);
+          renderLastSession();
           return;
         }
 
@@ -325,6 +385,7 @@
           ? "This recommended session will open in a new tab so you can return here after practice."
           : "This is only the latest saved recommendation. Run the pipeline refresh commands below to create a new pending recommendation.";
         renderFocusItems(active.focus_items || []);
+        renderLastSession();
       }
 
       document.getElementById("refresh-btn").addEventListener("click", () => refreshViaControlPlane("manual"));
@@ -361,14 +422,17 @@
         }
         const app = payload?.app || "practice";
         setRefreshStatus(`Detected a completed ${app} session. Refreshing the coach...`, "neutral");
+        renderLastSession();
         refreshViaControlPlane(`session_complete:${app}`);
       });
 
       window.addEventListener("focus", () => {
         renderRecommendation();
+        renderLastSession();
       });
 
       renderRecommendation();
+      renderLastSession();
     })();
   </script>
 </body>

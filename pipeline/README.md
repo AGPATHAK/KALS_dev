@@ -136,6 +136,7 @@ The coach hub can:
 - keep the coach hub available while you practice
 - reduce the need to trigger app launches from bash during real practice
 - auto-refresh the next recommendation after a practice session finishes when the local coach control server is running
+- show a compact summary of the just-finished session before presenting the refreshed next recommendation
 
 For a smoother real-practice loop, start the local coach control server in a separate terminal:
 
