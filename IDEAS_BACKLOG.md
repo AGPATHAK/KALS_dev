@@ -75,6 +75,38 @@ Deferred design ideas that are important, but intentionally not on the current c
 - Why deferred for now:
   The reflection contract itself was the first milestone. Tone shaping should come after we are satisfied that the underlying evidence selection is sound and the coach UX is stable enough to present richer language.
 
+### Cold-Start Onboarding Policy
+
+- Idea:
+  When the learner has little or no history, the coach should default to `alphabet` rather than trying to infer a recommendation from an almost-empty dataset.
+
+- Why it matters:
+  A true cold start is not the same as a mature recommendation problem. For a new learner, `alphabet` is the natural entry point, and making that explicit would make the coach feel more intentional and pedagogically grounded.
+
+- What this could enable later:
+  - clearer new-user onboarding
+  - less confusing early recommendations when the analytics tables are nearly empty
+  - a smoother transition from curriculum logic into adaptive logic
+
+- Why deferred for now:
+  The current rebuilt single-machine state exposed this clearly, but the core recommender loop is already working. This is a policy refinement that should be added deliberately rather than folded in ad hoc.
+
+### Anti-Boredom App Rotation
+
+- Idea:
+  After several consecutive recommendations for the same app, the coach should sometimes rotate into a nearby app such as `matras` to reduce boredom and broaden the analytics base.
+
+- Why it matters:
+  Even a sensible recommendation can become tiring if it repeats too often. A light rotation rule could preserve learner motivation while also building richer cross-app data instead of over-concentrating early history in one app.
+
+- What this could enable later:
+  - softer boredom management without hard fatigue enforcement
+  - more systematic multi-app data collection
+  - a coach that feels more like a teacher sequencing practice than a single-score sorter
+
+- Why deferred for now:
+  This is a meaningful recommendation-policy layer and should be introduced after the current recommender behavior is observed for a bit longer on the fresh rebuilt dataset.
+
 ### Cross-App Concept Model
 
 - Idea:
