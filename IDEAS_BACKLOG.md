@@ -22,6 +22,7 @@ Deferred design ideas that are important, but intentionally not on the current c
   - the `Clear Pending` action is not self-explanatory
   - once session-complete auto-refresh is stable, the role of the manual `Refresh Recommendation` button may need to change
   - coach status text and the last-session summary can feel partly redundant
+  - the fallback terminal-command box should probably become an advanced or recovery section rather than staying always visible in the main flow
 
 - What this could enable later:
   - clearer learner-facing coach UI
