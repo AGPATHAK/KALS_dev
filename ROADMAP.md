@@ -22,7 +22,7 @@ This roadmap is written to serve both goals at once. The Kannada apps are the pr
 
 ## Current Status
 
-Current stage: Stage 3A / 3A.5 complete for the validated baseline, with Stage 3B now scaffolded as a bounded reflective layer.
+Current stage: Stage 3A / 3A.5 complete for the validated baseline, with Stage 3B now working in a bounded manual-first form.
 
 Repository status at time of writing:
 
@@ -37,7 +37,7 @@ Repository status at time of writing:
 - Guided-session outcomes flow back through the normal telemetry path via `intervention_id`.
 - Whole-chain validation has been completed across `alphabet`, `matras`, `conjuncts`, and `words`.
 - A lightweight local coach control layer now exists so real practice can refresh recommendations without dropping back into a terminal-only loop.
-- Stage 3B now has a first reflective-layer scaffold that reads curated summaries, builds bounded prompts, and can log optional LLM reflections without replacing the deterministic baseline.
+- Stage 3B now has a working reflective-layer scaffold that reads curated summaries, builds bounded prompts, supports offline manual ChatGPT reflection import, and can later call an API-backed model without replacing the deterministic baseline.
 
 ## Roadmap Overview
 
@@ -300,6 +300,8 @@ This stage is where the project shifts from "interesting automation" toward genu
 
 ## Stage 3B
 
+Status: Working manual-first baseline
+
 ### Objective
 
 Add a tightly bounded LLM layer for explanation, pattern recognition, and reflective support, not for unconstrained control.
@@ -313,6 +315,7 @@ This stage teaches the right role for LLMs in agentic systems: they are best use
 - Prompted analysis over derived learner summaries
 - LLM-generated explanations for confusion patterns or suggested focus areas
 - Optional proposal layer that can augment, but not silently replace, rule-based outputs
+- Logged reflection history so deterministic and reflective outputs can be inspected together
 
 ### Learning Outcomes
 
@@ -331,6 +334,7 @@ This stage teaches the right role for LLMs in agentic systems: they are best use
 - LLM use is limited to named tasks
 - A rule-only baseline still exists and remains runnable
 - Comparative evaluation exists for at least one LLM-assisted workflow
+- A manual or API-backed reflection can be logged against the same deterministic context for later inspection
 
 ## Stage 4
 

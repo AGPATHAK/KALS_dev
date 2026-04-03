@@ -40,7 +40,7 @@ Append-only session log for resuming work across gaps.
 - A lightweight local coach control server now exists as the next UX layer above the validated pipeline, so the browser can request ingest + recommendation refresh without dropping back into the old stop-and-run-bash loop each time.
 - The smoother practice entrypoint now also has a one-command launcher that starts the local coach control server and opens the coach together.
 - Guided review now uses a smaller focus subset in short handoffs so app-side Leitner-lite spacing can actually resurface weak items instead of filling the whole session with distinct targets.
-- Stage 3B now has an initial reflective-layer scaffold: curated context, bounded prompt construction, optional OpenAI calling, and persistent reflection logging.
+- Stage 3B now has a working manual-first reflective layer: curated context, bounded prompt construction, offline ChatGPT reflection import, optional OpenAI calling later, and persistent reflection logging.
 - Manual ChatGPT reflections can now also be imported and logged into DuckDB, so Stage 3B can be tested offline without an API key while still preserving comparison history.
 
 ### What Works Now
@@ -184,13 +184,14 @@ Deliver the current handoff into the app environment:
 
 ### Immediate Next Step
 
-Use the smoother coach-led refresh loop to generate more natural real-practice data before major recommender refinements. The most likely next changes are:
+Use the smoother coach-led refresh loop and the new Stage 3B manual import path to generate more natural practice and reflection data before major recommender refinements. The most likely next changes are:
 
 - keep testing the local coach control path during real practice
 - use the new manual reflection import path to collect a small set of offline Stage 3B reflections before adding API-backed reflection runs
 - use guided-session performance, focus-item outcomes, and guided-vs-normal comparisons to refine the recommender once the real-practice sample is less toy-like
 - keep major refinements deferred unless they are needed to interpret the validated chain
 - decide how much of the current handoff contract should become the real app command interface
+- then move into Stage 4 by letting session completion drive an in-browser recommendation refresh loop rather than relying on explicit manual refresh as the main interaction
 
 ### Relevant Commits
 
