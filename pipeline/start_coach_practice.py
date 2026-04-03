@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
 import argparse
+import socket
 import threading
 from pathlib import Path
 
@@ -49,6 +50,12 @@ def build_parser() -> argparse.ArgumentParser:
     return parser
 
 
+def port_is_in_use(host: str, port: int) -> bool:
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
+        sock.settimeout(0.5)
+        return sock.connect_ex((host, port)) == 0
+
+
 def main() -> int:
     args = build_parser().parse_args()
     db_path = Path(args.db_path)
@@ -56,24 +63,34 @@ def main() -> int:
     db_path.parent.mkdir(parents=True, exist_ok=True)
     profile_dir.mkdir(parents=True, exist_ok=True)
 
-    handler = make_handler(
-        db_path=db_path,
-        top_items=args.top_items,
-        top_apps=args.top_apps,
-    )
-    server = ThreadingHTTPServer((args.host, args.port), handler)
-    server_thread = threading.Thread(target=server.serve_forever, daemon=True)
-    server_thread.start()
+    server = None
+    server_thread = None
+    started_server_here = False
 
-    print(f"Coach control server listening on http://{args.host}:{args.port}")
+    if port_is_in_use(args.host, args.port):
+        print(f"Coach control server already running on http://{args.host}:{args.port}")
+        print("Reusing the existing server and opening the coach hub only.")
+    else:
+        handler = make_handler(
+            db_path=db_path,
+            top_items=args.top_items,
+            top_apps=args.top_apps,
+        )
+        server = ThreadingHTTPServer((args.host, args.port), handler)
+        server_thread = threading.Thread(target=server.serve_forever, daemon=True)
+        server_thread.start()
+        started_server_here = True
+        print(f"Coach control server listening on http://{args.host}:{args.port}")
+
     print("Opening coach hub in the persistent Playwright profile.")
     try:
         return run_app_until_interrupt("coach", profile_dir)
     finally:
-        print("Stopping coach control server.")
-        server.shutdown()
-        server.server_close()
-        server_thread.join(timeout=2)
+        if started_server_here and server and server_thread:
+            print("Stopping coach control server.")
+            server.shutdown()
+            server.server_close()
+            server_thread.join(timeout=2)
 
 
 if __name__ == "__main__":
