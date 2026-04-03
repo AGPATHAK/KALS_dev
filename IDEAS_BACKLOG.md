@@ -11,6 +11,69 @@ Deferred design ideas that are important, but intentionally not on the current c
 
 ## 2026-04-01
 
+### Coach UI Clarifications And Progressive Disclosure
+
+- Idea:
+  Simplify the coach UI so recommendation mechanics are clearer and low-signal controls or labels are either explained better or hidden until needed.
+
+- Why it matters:
+  The current coach loop works, but some controls still read like system internals rather than learner-facing affordances. Examples already observed in live use:
+  - the `Selection Policy` field does not yet communicate much practical value
+  - the `Clear Pending` action is not self-explanatory
+  - once session-complete auto-refresh is stable, the role of the manual `Refresh Recommendation` button may need to change
+  - coach status text and the last-session summary can feel partly redundant
+
+- What this could enable later:
+  - clearer learner-facing coach UI
+  - progressive disclosure of system details only when useful
+  - a cleaner distinction between “what just happened” and “what to do next”
+  - fewer moments where the user has to infer product behavior from technical wording
+
+- Why deferred for now:
+  The current priority is to validate the Stage 4 loop and then refine the recommender. This is a real UX pass, but it is not blocking the core control loop anymore.
+
+### Coach As Ranked Practice Hub
+
+- Idea:
+  Reshape the coach from a single-app recommendation card plus a separate launcher into a ranked four-app practice hub.
+
+- Why it matters:
+  A ranked app grid would give the learner more agency while still expressing the system’s priorities. It could also make the “fatigue” question less about hard stop logic and more about guided choice. The suggested shape is something like:
+  - strongly recommended
+  - recommended
+  - practice
+  - test or maintenance
+  along with last accuracy and time since last practice
+
+- What this could enable later:
+  - learner choice without losing recommendation structure
+  - easier cross-app comparison in one place
+  - a more natural place to show app freshness, recent performance, and review pressure together
+  - softer fatigue handling through ranked options instead of a single forced next step
+
+- Why deferred for now:
+  This is a meaningful coach redesign and should happen after the Stage 4 loop and recommender behavior settle a bit more. It is better treated as a product pass than as a blocking systems step.
+
+### Teacher-Like Reflective Language
+
+- Idea:
+  Shape Stage 3B reflections and later coach-facing explanations to sound more like a good teacher or tutor than an analytics console.
+
+- Why it matters:
+  The current Stage 3B reflection path is structurally useful, but eventually the system should explain learner patterns in a more pedagogically supportive way, for example:
+  - “you are mixing up `da` and `tha`”
+  - “the `au` matra still needs reinforcement”
+  - “let’s review this in a shorter focused session”
+
+- What this could enable later:
+  - more motivating learner-facing explanations
+  - reflections that are easier to act on during real practice
+  - a bridge from raw analytics into tutor-style coaching language
+  - better eventual teacher-mode prompts for OpenAI or local LLM backends
+
+- Why deferred for now:
+  The reflection contract itself was the first milestone. Tone shaping should come after we are satisfied that the underlying evidence selection is sound and the coach UX is stable enough to present richer language.
+
 ### Cross-App Concept Model
 
 - Idea:

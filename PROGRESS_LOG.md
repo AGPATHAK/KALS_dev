@@ -201,11 +201,10 @@ Deliver the current handoff into the app environment:
 Use the smoother coach-led refresh loop and the new Stage 3B manual import path to generate more natural practice and reflection data before major recommender refinements. The most likely next changes are:
 
 - keep testing the local coach control path during real practice
+- use guided-session performance, focus-item outcomes, and guided-vs-normal comparisons to keep refining the recommender now that it is the main experience driver
+- make the Stage 4 coach UI clearer around “selection policy”, “clear pending”, and post-session vs next-step messaging
+- keep broader coach redesign ideas and teacher-like LLM language in the backlog until the current Stage 4 UX is more settled
 - use the new manual reflection import path to collect a small set of offline Stage 3B reflections before adding API-backed reflection runs
-- use guided-session performance, focus-item outcomes, and guided-vs-normal comparisons to refine the recommender once the real-practice sample is less toy-like
-- keep major refinements deferred unless they are needed to interpret the validated chain
-- decide how much of the current handoff contract should become the real app command interface
-- continue Stage 4 by building on the new session-complete auto-refresh loop rather than relying on explicit manual refresh as the main interaction
 
 ### Relevant Commits
 
