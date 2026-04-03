@@ -212,68 +212,111 @@ recent_usage AS (
     last_session_fail_count,
     sessions_in_last_3
   FROM recent_app_usage
+),
+scoring_inputs AS (
+  SELECT
+    e.app,
+    e.attempts,
+    e.sessions,
+    e.passes,
+    e.fails,
+    e.accuracy_pct,
+    e.avg_response_ms,
+    e.last_attempt_utc,
+    COALESCE(i.items_seen, 0) AS items_seen,
+    COALESCE(i.nonperfect_items, 0) AS nonperfect_items,
+    COALESCE(r.review_candidate_count, 0) AS review_candidate_count,
+    COALESCE(r.urgent_review_count, 0) AS urgent_review_count,
+    COALESCE(r.avg_review_priority_score, 0.0) AS avg_review_priority_score,
+    COALESCE(r.top_review_priority_score, 0.0) AS top_review_priority_score,
+    r.top_candidate_item_id,
+    r.top_candidate_shown_value,
+    COALESCE(u.last_session_rank, 999) AS last_session_rank,
+    COALESCE(u.last_session_attempt_count, 0) AS last_session_attempt_count,
+    COALESCE(u.last_session_fail_count, 0) AS last_session_fail_count,
+    COALESCE(u.sessions_in_last_3, 0) AS sessions_in_last_3
+  FROM event_counts_by_app e
+  LEFT JOIN review_rollup r
+    ON e.app = r.app
+  LEFT JOIN item_rollup i
+    ON e.app = i.app
+  LEFT JOIN recent_usage u
+    ON e.app = u.app
 )
 SELECT
-  e.app,
-  e.attempts,
-  e.sessions,
-  e.passes,
-  e.fails,
-  e.accuracy_pct,
-  e.avg_response_ms,
-  e.last_attempt_utc,
-  COALESCE(i.items_seen, 0) AS items_seen,
-  COALESCE(i.nonperfect_items, 0) AS nonperfect_items,
-  COALESCE(r.review_candidate_count, 0) AS review_candidate_count,
-  COALESCE(r.urgent_review_count, 0) AS urgent_review_count,
-  COALESCE(r.avg_review_priority_score, 0.0) AS avg_review_priority_score,
-  COALESCE(r.top_review_priority_score, 0.0) AS top_review_priority_score,
-  r.top_candidate_item_id,
-  r.top_candidate_shown_value,
-  COALESCE(u.last_session_rank, 999) AS last_session_rank,
-  COALESCE(u.last_session_attempt_count, 0) AS last_session_attempt_count,
-  COALESCE(u.last_session_fail_count, 0) AS last_session_fail_count,
-  COALESCE(u.sessions_in_last_3, 0) AS sessions_in_last_3,
+  s.app,
+  s.attempts,
+  s.sessions,
+  s.passes,
+  s.fails,
+  s.accuracy_pct,
+  s.avg_response_ms,
+  s.last_attempt_utc,
+  s.items_seen,
+  s.nonperfect_items,
+  s.review_candidate_count,
+  s.urgent_review_count,
+  s.avg_review_priority_score,
+  s.top_review_priority_score,
+  s.top_candidate_item_id,
+  s.top_candidate_shown_value,
+  s.last_session_rank,
+  s.last_session_attempt_count,
+  s.last_session_fail_count,
+  s.sessions_in_last_3,
   ROUND(
     (CASE
-      WHEN COALESCE(u.last_session_rank, 999) = 1
-       AND e.sessions = 1
-       AND COALESCE(u.last_session_fail_count, 0) > 0 THEN 7.0
-      WHEN COALESCE(u.last_session_rank, 999) = 1
-       AND e.sessions = 1 THEN 4.0
-      WHEN COALESCE(u.last_session_rank, 999) = 1
-       AND COALESCE(u.last_session_fail_count, 0) > 0 THEN 4.0
-      WHEN COALESCE(u.last_session_rank, 999) = 1 THEN -2.0
+      WHEN s.last_session_rank = 1
+       AND s.sessions = 1
+       AND s.last_session_fail_count > 0 THEN 6.0
+      WHEN s.last_session_rank = 1
+       AND s.sessions = 1 THEN 3.5
+      WHEN s.last_session_rank = 1
+       AND s.last_session_fail_count > 0 THEN 3.0
+      WHEN s.last_session_rank = 2
+       AND s.last_session_fail_count > 0 THEN 1.5
+      WHEN s.last_session_rank = 1 THEN -1.5
       ELSE 0.0
     END)
-    - (CASE WHEN COALESCE(u.sessions_in_last_3, 0) >= 3 THEN 3.0 ELSE 0.0 END)
-  , 2) AS recent_session_adjustment,
-  ROUND(
-      (COALESCE(r.urgent_review_count, 0) * 4.0)
-    + (COALESCE(r.review_candidate_count, 0) * 1.5)
-    + (COALESCE(i.nonperfect_items, 0) * 0.75)
-    + ((100.0 - e.accuracy_pct) / 10.0)
-    + (CASE WHEN e.fails > 0 THEN 1.0 ELSE 0.0 END)
-    + (CASE
-        WHEN COALESCE(u.last_session_rank, 999) = 1
-         AND e.sessions = 1
-         AND COALESCE(u.last_session_fail_count, 0) > 0 THEN 7.0
-        WHEN COALESCE(u.last_session_rank, 999) = 1
-         AND e.sessions = 1 THEN 4.0
-        WHEN COALESCE(u.last_session_rank, 999) = 1
-         AND COALESCE(u.last_session_fail_count, 0) > 0 THEN 4.0
-        WHEN COALESCE(u.last_session_rank, 999) = 1 THEN -2.0
+    - (CASE
+        WHEN s.sessions_in_last_3 >= 3 THEN 3.0
+        WHEN s.sessions_in_last_3 = 2 THEN 1.5
         ELSE 0.0
       END)
-    - (CASE WHEN COALESCE(u.sessions_in_last_3, 0) >= 3 THEN 3.0 ELSE 0.0 END)
+  , 2) AS recent_session_adjustment,
+  ROUND(
+      (s.urgent_review_count * 3.5)
+    + (SQRT(s.review_candidate_count) * 2.0)
+    + (LEAST(s.nonperfect_items, 8) * 0.5)
+    + (s.top_review_priority_score / 4.0)
+    + ((100.0 - s.accuracy_pct) / 4.0)
+    + (LEAST(s.last_session_fail_count, 3) * 2.5)
+    + (CASE WHEN s.fails > 0 THEN 0.5 ELSE 0.0 END)
+    + (CASE
+        WHEN s.last_session_rank = 1
+         AND s.sessions = 1
+         AND s.last_session_fail_count > 0 THEN 6.0
+        WHEN s.last_session_rank = 1
+         AND s.sessions = 1 THEN 3.5
+        WHEN s.last_session_rank = 1
+         AND s.last_session_fail_count > 0 THEN 3.0
+        WHEN s.last_session_rank = 2
+         AND s.last_session_fail_count > 0 THEN 1.5
+        WHEN s.last_session_rank = 1 THEN -1.5
+        ELSE 0.0
+      END)
+    - (CASE
+        WHEN s.sessions_in_last_3 >= 3 THEN 3.0
+        WHEN s.sessions_in_last_3 = 2 THEN 1.5
+        ELSE 0.0
+      END)
+    - (CASE
+        WHEN s.accuracy_pct >= 95.0 AND s.sessions >= 10 THEN 4.0
+        WHEN s.accuracy_pct >= 90.0 AND s.sessions >= 10 THEN 2.5
+        ELSE 0.0
+      END)
   , 2) AS next_app_priority_score
-FROM event_counts_by_app e
-LEFT JOIN review_rollup r
-  ON e.app = r.app
-LEFT JOIN item_rollup i
-  ON e.app = i.app
-LEFT JOIN recent_usage u
-  ON e.app = u.app;
+FROM scoring_inputs s;
 
 CREATE OR REPLACE VIEW delivered_handoffs AS
 SELECT

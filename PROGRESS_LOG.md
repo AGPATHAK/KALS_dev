@@ -44,6 +44,7 @@ Append-only session log for resuming work across gaps.
 - Manual ChatGPT reflections can now also be imported and logged into DuckDB, so Stage 3B can be tested offline without an API key while still preserving comparison history.
 - Stage 4 has now started in a minimal advisory form: apps emit a session-complete signal and the coach can auto-refresh the next recommendation in-browser when the local control server is running.
 - The coach now also shows a compact last-session summary, so the refreshed recommendation has immediate context from the session that just ended.
+- The deterministic recommender has now been retuned to reduce raw cumulative-history bias, so apps with weaker current performance can surface ahead of heavily practiced apps that still carry old review baggage.
 
 ### What Works Now
 
@@ -54,6 +55,10 @@ Append-only session log for resuming work across gaps.
   - persisted recommendation runs
   - selection policy metadata such as `highest_priority` vs `continue_recent_app`
   - a structured `handoff` block with action, target app, session size, and focus item IDs
+- `data/analytics_views.sql` now scores next-app priority with:
+  - weaker dependence on raw review-candidate counts
+  - stronger weight on current accuracy and recent session failures
+  - explicit penalties for highly practiced, high-accuracy apps continuing to dominate recommendation slots
 - `pipeline/deliver_recommendation_handoff.py` can:
   - deliver the handoff into browser `localStorage`
   - verify that the app environment received it
@@ -178,6 +183,7 @@ Deliver the current handoff into the app environment:
 
 - The current data is still small and ordered by a few manual sessions, so replay metrics are illustrative rather than decisive.
 - The current rule engine over-favors `alphabet` on this dataset.
+- Recommender behavior is now more balanced, but it still needs more real-practice data before we should treat the ranking as pedagogically settled.
 - Replay is now slightly softer than before, but it still does not capture concept-level transfer across apps.
 - The apps still do not consume the delivered handoff automatically; the bridge currently writes advisory data only.
 - All four apps now support optional advisory handoff consumption, but the handoff is still learner-started rather than automatically enforced.

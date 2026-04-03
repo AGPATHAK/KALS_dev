@@ -11,7 +11,7 @@ REPO_ROOT = Path(__file__).resolve().parent.parent
 DEFAULT_DB_PATH = REPO_ROOT / "data" / "kals.duckdb"
 ANALYTICS_SQL_PATH = REPO_ROOT / "data" / "analytics_views.sql"
 SCHEMA_SQL_PATH = REPO_ROOT / "data" / "schema.sql"
-RECOMMENDER_VERSION = "stage3a_v1"
+RECOMMENDER_VERSION = "stage3a_v2"
 RECOMMENDATION_CONTRACT_VERSION = "kals.recommendation.v1"
 
 
