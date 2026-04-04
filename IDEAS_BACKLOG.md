@@ -24,7 +24,7 @@ Deferred design ideas that are important, but intentionally not on the current c
   - coach status text and the last-session summary can feel partly redundant
   - the fallback terminal-command box should probably become an advanced or recovery section rather than staying always visible in the main flow
   - the coach should eventually surface a learner-facing summary of current app health, weak areas, and ranking signals rather than leaving that view only in terminal analytics
-  - session-size guidance should reflect app-specific defaults and constraints, especially the fact that `words` is naturally longer while the other apps often start from shorter guided sessions
+  - session-size guidance should come from the coach's current review judgment rather than simply inheriting whatever session-size defaults each standalone app happened to expose
 
 - What this could enable later:
   - clearer learner-facing coach UI

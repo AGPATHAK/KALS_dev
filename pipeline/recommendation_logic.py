@@ -45,22 +45,17 @@ def recommend_session_size(
     last_session_fail_count: int = 0,
 ) -> tuple:
     if selection_policy == "continue_recent_app" and last_session_fail_count > 0:
-        if app == "words":
-            return 10, "keep the continuation session short so the fresh miss can be revisited while it is still recent"
-        return 5, "keep the continuation session short so the fresh misses can be reviewed while they are still recent"
+        if last_session_fail_count >= 3 or urgent_count >= 3:
+            return 10, "use a moderate follow-up session so the fresh misses can be revisited without overloading the learner"
+        return 5, "keep the follow-up session tight so the freshest misses can be revisited while they are still recent"
 
-    if app == "words":
-        if urgent_count >= 2 or accuracy_pct < 85.0:
-            return 10, "keep the words session short because current review pressure is meaningful"
-        return 20, "use a standard words session because current review pressure is light"
+    if urgent_count >= 6 or review_count >= 12 or accuracy_pct < 70.0:
+        return 15, "use a longer guided session because there are several active review needs to cover"
 
-    if urgent_count >= 3 or accuracy_pct < 75.0:
-        return 5, "keep the session tightly focused because there are several urgent review items"
+    if urgent_count >= 2 or review_count >= 5 or accuracy_pct < 85.0:
+        return 10, "use a moderate session size to cover the main review items without overloading the learner"
 
-    if review_count >= 2 or accuracy_pct < 85.0:
-        return 10, "use a moderate session size to cover the main review items without overloading the session"
-
-    return 10, "use the default session size because review pressure is currently light"
+    return 5, "keep the session short because current review pressure is limited"
 
 
 def fetch_recommendation_inputs(
