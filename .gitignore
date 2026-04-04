@@ -3,3 +3,4 @@
 .playwright-profile/
 data/kals.duckdb
 .pycache/
+.DS_Store
