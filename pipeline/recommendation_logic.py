@@ -15,6 +15,8 @@ RECOMMENDER_VERSION = "stage3a_v2"
 RECOMMENDATION_CONTRACT_VERSION = "kals.recommendation.v1"
 ANTI_BOREDOM_REPEAT_THRESHOLD = 5
 ANTI_BOREDOM_WINDOW = 6
+COLD_START_MAX_ATTEMPTS = 20
+COLD_START_MAX_SESSIONS = 3
 
 
 def refresh_views_connection(conn: duckdb.DuckDBPyConnection) -> None:
@@ -140,9 +142,31 @@ def fetch_recent_recommended_apps(
     return [row[0] for row in rows if row and row[0]]
 
 
+def fetch_dataset_size(conn: duckdb.DuckDBPyConnection) -> Tuple[int, int]:
+    attempts, sessions = conn.execute(
+        """
+        SELECT
+          COUNT(*) AS attempts,
+          COUNT(DISTINCT session_id) AS sessions
+        FROM raw_attempt_events
+        """
+    ).fetchone()
+    return int(attempts or 0), int(sessions or 0)
+
+
 def choose_recommended_app(conn: duckdb.DuckDBPyConnection, app_rows: List[tuple]) -> Tuple[Optional[tuple], str, str]:
     if not app_rows:
         return None, "none", "no app recommendation is available yet"
+
+    total_attempts, total_sessions = fetch_dataset_size(conn)
+    if total_attempts <= COLD_START_MAX_ATTEMPTS and total_sessions <= COLD_START_MAX_SESSIONS:
+        alphabet_row = next((row for row in app_rows if row[0] == "alphabet"), None)
+        if alphabet_row:
+            return (
+                alphabet_row,
+                "cold_start_alphabet",
+                "start with alphabet until the learner has enough history for more adaptive sequencing",
+            )
 
     for row in app_rows:
         (
