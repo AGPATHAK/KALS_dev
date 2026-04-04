@@ -54,6 +54,10 @@
       background: linear-gradient(180deg, rgba(236, 253, 245, 0.96) 0%, rgba(255, 255, 255, 0.98) 100%);
       box-shadow: 0 18px 34px rgba(16, 185, 129, 0.14);
     }
+    .recent-app {
+      border-color: rgba(14, 165, 233, 0.35);
+      background: linear-gradient(180deg, rgba(240, 249, 255, 0.96) 0%, rgba(255, 255, 255, 0.98) 100%);
+    }
     details > summary::-webkit-details-marker { display: none; }
   </style>
 </head>
@@ -234,10 +238,10 @@
 
     <section class="panel rounded-[2rem] shadow-soft p-6 md:p-8 space-y-5">
       <div>
-        <p class="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">Practice Launcher</p>
-        <h2 class="text-xl font-bold mt-2">Open Any App</h2>
+        <p class="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">Practice Options</p>
+        <h2 class="text-xl font-bold mt-2">Choose Your Next Move</h2>
         <p class="text-sm text-slate-600 mt-2">
-          Use these for normal practice, or launch the recommended app above when a guided session is pending.
+          Follow the coach pick, reopen the app you just used, or choose another area if you want a change of pace.
         </p>
       </div>
 
@@ -279,18 +283,18 @@
 
     <section class="panel rounded-[2rem] shadow-soft p-6 md:p-8 space-y-5">
       <div>
-        <p class="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">After Practice</p>
-        <h2 class="text-xl font-bold mt-2">Refresh The Coach</h2>
+        <p class="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">Backup Plan</p>
+        <h2 class="text-xl font-bold mt-2">Manual Recovery</h2>
         <p class="text-sm text-slate-600 mt-2">
-          Best experience: start the local coach control server once in a separate terminal, then use the refresh controls above after each practice run. The fallback commands are still here when you need them, but they no longer need to be the center of the UI.
+          Most of the time you can ignore this section. These commands are only here if the local coach helper is unavailable or you want to inspect the pipeline manually.
         </p>
       </div>
 
       <details class="rounded-3xl border border-slate-200 bg-slate-50/90 p-5">
         <summary class="flex cursor-pointer list-none items-center justify-between gap-3">
           <div>
-            <div class="text-sm font-semibold text-slate-900">Show fallback terminal workflow</div>
-            <div class="text-xs text-slate-500 mt-1">Use these if the local control helper is unavailable.</div>
+            <div class="text-sm font-semibold text-slate-900">Show manual workflow</div>
+            <div class="text-xs text-slate-500 mt-1">Use these only when the coach needs help recovering.</div>
           </div>
           <div class="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">Expand</div>
         </summary>
@@ -315,13 +319,6 @@
       </details>
     </section>
 
-    <section class="panel rounded-[2rem] shadow-soft p-6 md:p-8 space-y-4">
-      <p class="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">How This Fits</p>
-      <div class="text-sm text-slate-600 space-y-2">
-        <p>The coach hub reads the current recommendation handoff from browser storage and launches the right app from the browser.</p>
-        <p>Recommendation generation and data ingest still happen through the Python pipeline for now, but actual practice can already feel much less terminal-driven.</p>
-      </div>
-    </section>
   </main>
 
   <script>
@@ -529,12 +526,13 @@
         const appStats = summarizeAppEvents();
         document.querySelectorAll(".app-launch").forEach((button) => {
           const isRecommended = Boolean(app) && button.dataset.app === app;
+          const isRecent = sessionSummary?.app === button.dataset.app;
           button.classList.toggle("recommended-app", isRecommended);
+          button.classList.toggle("recent-app", !isRecommended && isRecent);
           const badge = button.querySelector(".app-launch-badge");
           const meta = button.querySelector(".app-launch-meta");
           const thisApp = button.dataset.app;
           const stats = appStats[thisApp];
-          const isRecent = sessionSummary?.app === thisApp;
           if (badge) {
             badge.classList.toggle("hidden", false);
             if (isRecommended) {
