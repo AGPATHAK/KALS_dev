@@ -11,6 +11,7 @@ import duckdb
 
 from deliver_recommendation_handoff import save_delivery_run
 from ingest_events import DEFAULT_DB_PATH, ingest_events_batch
+from reflection_logic import run_reflection, save_reflection_run
 from recommendation_logic import generate_recommendation, refresh_views, save_recommendation_run
 
 
@@ -96,12 +97,48 @@ def make_handler(*, db_path: Path, top_items: int, top_apps: int):
             )
 
         def do_POST(self) -> None:
-            if self.path != "/refresh":
+            if self.path not in {"/refresh", "/reflect"}:
                 self._send_json({"ok": False, "error": "not_found"}, status=HTTPStatus.NOT_FOUND)
                 return
 
             try:
                 body = self._read_json_body()
+
+                if self.path == "/reflect":
+                    refresh_requested = bool(body.get("refresh_views", False))
+                    if refresh_requested:
+                        refresh_views(db_path)
+
+                    result = run_reflection(
+                        db_path=db_path,
+                        top_items_limit=top_items,
+                        top_apps_limit=top_apps,
+                        mode="openai",
+                    )
+                    reflection_id = None
+                    if result.get("context") and result.get("status") == "completed":
+                        reflection_id = save_reflection_run(
+                            db_path=db_path,
+                            reflection_mode="openai_auto",
+                            provider=result["provider"],
+                            model=result.get("model"),
+                            context=result["context"],
+                            prompt_text=result["prompt_text"],
+                            output_text=result.get("output_text"),
+                            reflection_json=result.get("reflection_json"),
+                            status=result["status"],
+                            error_message=result.get("error_message"),
+                        )
+                    self._send_json(
+                        {
+                            "ok": result.get("status") == "completed",
+                            "reflection_result": result,
+                            "reflection_id": reflection_id,
+                        },
+                        status=HTTPStatus.OK if result.get("status") == "completed" else HTTPStatus.BAD_GATEWAY,
+                    )
+                    return
+
                 events = body.get("events") or []
                 if not isinstance(events, list):
                     raise ValueError("events must be a JSON array")

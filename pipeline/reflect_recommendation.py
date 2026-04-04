@@ -2,6 +2,7 @@
 
 import argparse
 import json
+import sys
 from pathlib import Path
 
 from reflection_logic import (
@@ -75,6 +76,8 @@ def print_text(result: dict) -> None:
     print("Stage 3B Reflection")
     print(f"- prompt_version: {REFLECTION_PROMPT_VERSION}")
     print(f"- reflection_mode: {result['status']}")
+    if context.get("latest_event_utc"):
+        print(f"- data_as_of_utc: {context['latest_event_utc']}")
     print(f"- deterministic_app: {deterministic['app']}")
     print(f"- deterministic_policy: {deterministic['selection_policy']}")
     print(f"- deterministic_why: {deterministic['rationale_summary']}")
@@ -144,6 +147,7 @@ def main() -> int:
         print_text(result)
         if reflection_id:
             print(f"\nSaved Reflection Run\n- reflection_id: {reflection_id}")
+        sys.stdout.flush()
 
     return 0
 

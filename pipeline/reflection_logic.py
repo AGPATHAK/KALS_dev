@@ -148,8 +148,17 @@ def build_reflection_context(
         ).fetchall(),
     )
 
+    latest_event_row = conn.execute(
+        """
+        SELECT max(timestamp_utc) AS latest_event_utc
+        FROM raw_attempt_events
+        """
+    ).fetchone()
+    latest_event_utc = latest_event_row[0].isoformat() if latest_event_row and latest_event_row[0] else None
+
     return {
         "generated_at_utc": now_utc_iso(),
+        "latest_event_utc": latest_event_utc,
         "source_db_path": str(db_path),
         "recommendation_contract_version": RECOMMENDATION_CONTRACT_VERSION,
         "deterministic_recommendation": recommendation,
@@ -216,6 +225,7 @@ def extract_response_text(payload: Dict) -> str:
 def call_openai_reflection(
     *,
     api_key: str,
+    org_id: Optional[str],
     model: str,
     system_prompt: str,
     user_prompt: str,
@@ -227,13 +237,18 @@ def call_openai_reflection(
             {"role": "user", "content": [{"type": "input_text", "text": user_prompt}]},
         ],
     }
+    headers = {
+        "Authorization": f"Bearer {api_key}",
+        "Content-Type": "application/json",
+        "Connection": "close",
+    }
+    if org_id:
+        headers["OpenAI-Organization"] = org_id
+
     req = urllib.request.Request(
         "https://api.openai.com/v1/responses",
         data=json.dumps(request_body).encode("utf-8"),
-        headers={
-            "Authorization": f"Bearer {api_key}",
-            "Content-Type": "application/json",
-        },
+        headers=headers,
         method="POST",
     )
     with urllib.request.urlopen(req, timeout=90) as response:
@@ -369,6 +384,7 @@ def run_reflection(
         }
 
     api_key = os.environ.get("OPENAI_API_KEY")
+    org_id = os.environ.get("OPENAI_ORG_ID")
     if not api_key:
         return {
             "status": "error",
@@ -384,6 +400,7 @@ def run_reflection(
     try:
         response_payload = call_openai_reflection(
             api_key=api_key,
+            org_id=org_id,
             model=model,
             system_prompt=system_prompt,
             user_prompt=user_prompt,

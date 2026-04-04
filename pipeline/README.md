@@ -96,6 +96,12 @@ This reflective layer:
 - never replaces the rule-based recommendation or handoff
 - can persist reflection runs into `llm_reflection_runs`
 
+If your API key belongs to a specific OpenAI organization, set `OPENAI_ORG_ID` too:
+
+```bash
+OPENAI_API_KEY="your_key_here" OPENAI_ORG_ID="org_..." .venv/bin/python pipeline/reflect_recommendation.py --refresh-views --mode openai
+```
+
 If you want to test Stage 3B manually in ChatGPT before using an API key:
 
 ```bash
@@ -153,6 +159,8 @@ When that server is running, the coach hub `Refresh Recommendation` button will:
 - explain when the recommendation stays on the same app because review pressure is still cumulative
 
 The practice apps now also emit a lightweight `kals_session_complete_event` into browser storage when a session ends. If the coach hub is open while the local control server is running, it listens for that event and attempts an automatic in-browser refresh after session completion.
+
+If the local coach control server was started with `OPENAI_API_KEY` available, the coach can also request a bounded Stage 3B reflection automatically after every 5 completed guided sessions. This keeps LLM use periodic and cheaper than reflecting after every single practice run.
 
 If the server is not running, the coach hub still shows the fallback terminal commands for the validated manual refresh path.
 

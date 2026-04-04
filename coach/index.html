@@ -67,6 +67,10 @@
           class="rounded-2xl border border-slate-300 px-5 py-3 font-semibold hover:bg-slate-50">
           Refresh Now
         </button>
+        <button id="reflect-btn"
+          class="rounded-2xl border border-violet-200 px-5 py-3 font-semibold text-violet-700 hover:bg-violet-50">
+          Reflect Now
+        </button>
         <button id="clear-pending-btn"
           class="rounded-2xl border border-rose-200 px-5 py-3 font-semibold text-rose-600 hover:bg-rose-50">
           Dismiss Pending
@@ -109,6 +113,43 @@
         <div class="rounded-2xl border border-slate-200 bg-slate-50 p-4">
           <div class="text-xs uppercase tracking-wide text-slate-500">Mode</div>
           <div id="last-session-mode" class="text-xl font-semibold mt-2">—</div>
+        </div>
+      </div>
+    </section>
+
+    <section id="reflection-section" class="hidden bg-white rounded-3xl shadow-soft p-6 md:p-8 space-y-5">
+      <div class="flex items-start justify-between gap-4">
+        <div>
+          <p class="text-xs font-semibold uppercase tracking-[0.2em] text-violet-700">Coach Reflection</p>
+          <h2 id="reflection-title" class="text-xl font-bold mt-2">No reflection yet</h2>
+          <p id="reflection-subtitle" class="text-sm text-slate-600 mt-2">
+            The coach will add a periodic teacher-style reflection after every few guided sessions.
+          </p>
+        </div>
+        <div id="reflection-badge" class="rounded-full bg-slate-200 px-3 py-1 text-xs font-semibold text-slate-600">
+          Waiting
+        </div>
+      </div>
+
+      <div class="grid md:grid-cols-2 gap-4">
+        <div class="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+          <div class="text-xs uppercase tracking-wide text-slate-500">Coach Summary</div>
+          <div id="reflection-summary" class="text-sm text-slate-700 mt-2 leading-6">—</div>
+        </div>
+        <div class="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+          <div class="text-xs uppercase tracking-wide text-slate-500">Why It Fits</div>
+          <div id="reflection-alignment" class="text-sm text-slate-700 mt-2 leading-6">—</div>
+        </div>
+      </div>
+
+      <div class="grid md:grid-cols-2 gap-4">
+        <div class="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+          <div class="text-xs uppercase tracking-wide text-slate-500">Alternative Worth Watching</div>
+          <div id="reflection-alternative" class="text-sm text-slate-700 mt-2">—</div>
+        </div>
+        <div class="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+          <div class="text-xs uppercase tracking-wide text-slate-500">Confidence Note</div>
+          <div id="reflection-confidence" class="text-sm text-slate-700 mt-2">—</div>
         </div>
       </div>
     </section>
@@ -185,6 +226,11 @@
       const LATEST_HANDOFF_KEY = "kals_latest_recommendation_handoff";
       const PENDING_HANDOFF_KEY = "kals_pending_recommendation_handoff";
       const SESSION_COMPLETE_EVENT_KEY = "kals_session_complete_event";
+      const LATEST_REFLECTION_KEY = "kals_latest_llm_reflection";
+      const GUIDED_SESSION_COUNT_KEY = "kals_guided_session_count";
+      const GUIDED_REFLECTION_LAST_COUNT_KEY = "kals_guided_reflection_last_count";
+      const LAST_HANDLED_GUIDED_EVENT_KEY = "kals_last_handled_guided_session_event";
+      const REFLECTION_INTERVAL = 5;
       const CONTROL_API_BASE = "http://127.0.0.1:8765";
       const COACH_WINDOW_NAME = "kals-coach-hub";
       const APP_PATHS = {
@@ -242,6 +288,72 @@
         el.textContent = message;
       }
 
+      function readInt(key, fallback = 0) {
+        const raw = Number(localStorage.getItem(key));
+        return Number.isFinite(raw) ? raw : fallback;
+      }
+
+      function writeInt(key, value) {
+        localStorage.setItem(key, String(value));
+      }
+
+      function buildSessionEventId(summary) {
+        return [
+          summary?.app || "practice",
+          summary?.completed_at_utc || "unknown",
+          summary?.intervention_id || "normal",
+          summary?.correct ?? "x",
+          summary?.wrong ?? "x",
+        ].join("|");
+      }
+
+      function trackGuidedSession(summary) {
+        if (!summary?.intervention_id) return { counted: false, count: readInt(GUIDED_SESSION_COUNT_KEY, 0) };
+        const eventId = buildSessionEventId(summary);
+        const lastHandled = localStorage.getItem(LAST_HANDLED_GUIDED_EVENT_KEY);
+        if (eventId === lastHandled) {
+          return { counted: false, count: readInt(GUIDED_SESSION_COUNT_KEY, 0) };
+        }
+        const nextCount = readInt(GUIDED_SESSION_COUNT_KEY, 0) + 1;
+        writeInt(GUIDED_SESSION_COUNT_KEY, nextCount);
+        localStorage.setItem(LAST_HANDLED_GUIDED_EVENT_KEY, eventId);
+        return { counted: true, count: nextCount };
+      }
+
+      function guidedSessionsUntilReflection() {
+        const count = readInt(GUIDED_SESSION_COUNT_KEY, 0);
+        const lastReflected = readInt(GUIDED_REFLECTION_LAST_COUNT_KEY, 0);
+        const progress = count - lastReflected;
+        const remaining = REFLECTION_INTERVAL - progress;
+        return remaining > 0 ? remaining : 0;
+      }
+
+      function renderReflection() {
+        const section = document.getElementById("reflection-section");
+        const reflection = readJson(LATEST_REFLECTION_KEY);
+        const remaining = guidedSessionsUntilReflection();
+        if (!reflection?.reflection_json) {
+          section.classList.add("hidden");
+          return;
+        }
+
+        const body = reflection.reflection_json || {};
+        section.classList.remove("hidden");
+        document.getElementById("reflection-title").textContent =
+          `Teacher note after ${reflection.guided_session_count || "recent"} guided sessions`;
+        document.getElementById("reflection-subtitle").textContent =
+          remaining > 0
+            ? `The next LLM reflection will appear after ${remaining} more guided ${remaining === 1 ? "session" : "sessions"}.`
+            : "The coach is ready to generate another reflection after the next guided-session block.";
+        document.getElementById("reflection-badge").textContent = "LLM";
+        document.getElementById("reflection-badge").className =
+          "rounded-full bg-violet-100 px-3 py-1 text-xs font-semibold text-violet-700";
+        document.getElementById("reflection-summary").textContent = body.summary || "—";
+        document.getElementById("reflection-alignment").textContent = body.alignment || "—";
+        document.getElementById("reflection-alternative").textContent = body.alternative_app || "No alternative flagged";
+        document.getElementById("reflection-confidence").textContent = body.confidence_note || "—";
+      }
+
       function describeRefreshOutcome({ sourceApp, nextApp, insertedCount, sameApp, isAuto }) {
         const attemptsText = insertedCount === 1 ? "1 new attempt" : `${insertedCount} new attempts`;
         if (isAuto) {
@@ -289,6 +401,7 @@
           }
 
           renderRecommendation();
+          renderReflection();
           const summary = payload.ingest_summary || {};
           const nextApp = payload.recommendation?.recommended_app?.app || payload.recommendation?.handoff?.target_app || "the same app";
           const sameApp = previousApp && nextApp === previousApp;
@@ -303,6 +416,19 @@
             }),
             "success"
           );
+
+          if (isAuto && sourceApp) {
+            const sessionSummary = readJson(SESSION_COMPLETE_EVENT_KEY);
+            if (sessionSummary?.intervention_id) {
+              const { count } = trackGuidedSession(sessionSummary);
+              const lastReflected = readInt(GUIDED_REFLECTION_LAST_COUNT_KEY, 0);
+              if (count > 0 && count - lastReflected >= REFLECTION_INTERVAL) {
+                await requestReflection({ guidedSessionCount: count, sourceApp, manual: false });
+              } else {
+                renderReflection();
+              }
+            }
+          }
         } catch (error) {
           setRefreshStatus(
             `${isAuto ? "Auto-refresh" : "Live refresh"} could not reach the local coach service. Start \`.venv/bin/python pipeline/coach_control_server.py\` or use the fallback terminal commands below.`,
@@ -310,6 +436,60 @@
           );
         } finally {
           refreshBtn.disabled = false;
+        }
+      }
+
+      async function requestReflection({ guidedSessionCount = null, sourceApp = "practice", manual = false }) {
+        const reflectBtn = document.getElementById("reflect-btn");
+        if (reflectBtn) reflectBtn.disabled = true;
+        setRefreshStatus(
+          manual
+            ? "Asking the LLM for a coach reflection..."
+            : `Processed the latest ${sourceApp} session. Asking the LLM for a higher-level coach reflection...`,
+          "neutral"
+        );
+        try {
+          const response = await fetch(`${CONTROL_API_BASE}/reflect`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ refresh_views: false }),
+          });
+          const payload = await response.json();
+          if (!response.ok || !payload.ok || !payload.reflection_result?.reflection_json) {
+            throw new Error(payload.error || payload.reflection_result?.error_message || "Reflection request failed");
+          }
+          localStorage.setItem(
+            LATEST_REFLECTION_KEY,
+            JSON.stringify({
+              created_at_utc: new Date().toISOString(),
+              guided_session_count: guidedSessionCount ?? readInt(GUIDED_SESSION_COUNT_KEY, 0),
+              reflection_json: payload.reflection_result.reflection_json,
+              recommended_app: payload.reflection_result.context?.deterministic_recommendation?.recommended_app?.app || null,
+              reflection_id: payload.reflection_id || null,
+            })
+          );
+          if (guidedSessionCount != null) {
+            writeInt(GUIDED_REFLECTION_LAST_COUNT_KEY, guidedSessionCount);
+          }
+          renderReflection();
+          setRefreshStatus(
+            manual
+              ? "Coach reflection updated."
+              : `Coach updated and added a new LLM reflection after ${guidedSessionCount} guided sessions.`,
+            "success"
+          );
+        } catch (error) {
+          renderReflection();
+          const message = String(error?.message || "unknown error");
+          const detail = message === "not_found"
+            ? "the running coach control server is an older copy and needs a restart"
+            : message;
+          setRefreshStatus(
+            `The coach refreshed normally, but the LLM reflection step did not complete: ${detail}. It will try again after the next guided-session block.`,
+            "error"
+          );
+        } finally {
+          if (reflectBtn) reflectBtn.disabled = false;
         }
       }
 
@@ -379,6 +559,7 @@
           note.textContent = "When a pending recommendation exists, the recommended session will open in a new tab from this hub.";
           renderFocusItems([]);
           renderLastSession();
+          renderReflection();
           return;
         }
 
@@ -399,9 +580,13 @@
           : "This is only the latest saved recommendation. A fresh pending session will appear after the next coach refresh.";
         renderFocusItems(active.focus_items || []);
         renderLastSession();
+        renderReflection();
       }
 
       document.getElementById("refresh-btn").addEventListener("click", () => refreshViaControlPlane("manual"));
+      document.getElementById("reflect-btn").addEventListener("click", () => {
+        requestReflection({ guidedSessionCount: null, sourceApp: "practice", manual: true });
+      });
       document.getElementById("clear-pending-btn").addEventListener("click", () => {
         localStorage.removeItem(PENDING_HANDOFF_KEY);
         renderRecommendation();
@@ -442,10 +627,12 @@
       window.addEventListener("focus", () => {
         renderRecommendation();
         renderLastSession();
+        renderReflection();
       });
 
       renderRecommendation();
       renderLastSession();
+      renderReflection();
     })();
   </script>
 </body>

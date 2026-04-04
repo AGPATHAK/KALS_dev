@@ -45,6 +45,7 @@ Append-only session log for resuming work across gaps.
 - Stage 4 has now started in a minimal advisory form: apps emit a session-complete signal and the coach can auto-refresh the next recommendation in-browser when the local control server is running.
 - The coach now also shows a compact last-session summary, so the refreshed recommendation has immediate context from the session that just ended.
 - The deterministic recommender has now been retuned to reduce raw cumulative-history bias, so apps with weaker current performance can surface ahead of heavily practiced apps that still carry old review baggage.
+- The coach can now batch Stage 3B OpenAI reflections and surface them in-browser after every 5 completed guided sessions, instead of calling the LLM after each individual practice run.
 
 ### What Works Now
 
@@ -112,6 +113,7 @@ Append-only session log for resuming work across gaps.
   - reuse named coach/app tabs instead of multiplying browser pages during practice
   - listen for session-complete signals from app tabs and auto-refresh the next recommendation in-browser
   - show a compact summary of the most recently finished session
+  - count completed guided sessions and surface a periodic LLM reflection card after every 5 such sessions when API-backed reflection is available
 - `pipeline/deliver_recommendation_handoff.py` can now:
   - deliver the normal recommender-selected handoff
   - or deliver a manual app-targeted handoff for validation runs
@@ -121,6 +123,7 @@ Append-only session log for resuming work across gaps.
   - ingest them into DuckDB without reopening the Playwright profile
   - recompute the deterministic recommendation
   - persist recommendation and delivery rows for the refreshed handoff
+  - call the bounded Stage 3B OpenAI reflection path on demand and persist those reflection runs
 - all four apps can now:
   - emit a lightweight `kals_session_complete_event` into browser storage when a session ends
   - trigger coach-side auto-refresh when the coach tab and local control server are available
