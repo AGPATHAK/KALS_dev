@@ -211,23 +211,23 @@
 
       <div class="grid md:grid-cols-2 gap-4">
         <div class="metric-card rounded-2xl p-4">
-          <div class="text-xs uppercase tracking-wide text-slate-500">What The Coach Notices</div>
-          <div id="reflection-summary" class="text-sm text-slate-700 mt-2 leading-6">—</div>
+          <div class="text-xs uppercase tracking-wide text-slate-500">Focus Today</div>
+          <div id="reflection-focus" class="text-sm text-slate-700 mt-2 leading-6">—</div>
         </div>
         <div class="metric-card rounded-2xl p-4">
-          <div class="text-xs uppercase tracking-wide text-slate-500">Why This Still Fits</div>
-          <div id="reflection-alignment" class="text-sm text-slate-700 mt-2 leading-6">—</div>
+          <div class="text-xs uppercase tracking-wide text-slate-500">Watch Out For</div>
+          <div id="reflection-caution" class="text-sm text-slate-700 mt-2 leading-6">—</div>
         </div>
       </div>
 
       <div class="grid md:grid-cols-2 gap-4">
         <div class="metric-card rounded-2xl p-4">
-          <div class="text-xs uppercase tracking-wide text-slate-500">Another Option</div>
-          <div id="reflection-alternative" class="text-sm text-slate-700 mt-2">—</div>
+          <div class="text-xs uppercase tracking-wide text-slate-500">If You Want Variety</div>
+          <div id="reflection-alternative" class="text-sm text-slate-700 mt-2 leading-6">—</div>
         </div>
         <div class="metric-card rounded-2xl p-4">
-          <div class="text-xs uppercase tracking-wide text-slate-500">How Certain This Is</div>
-          <div id="reflection-confidence" class="text-sm text-slate-700 mt-2">—</div>
+          <div class="text-xs uppercase tracking-wide text-slate-500">How Sure The Coach Is</div>
+          <div id="reflection-confidence" class="text-sm text-slate-700 mt-2 leading-6">—</div>
         </div>
       </div>
     </section>
@@ -465,9 +465,18 @@
         }
 
         const body = reflection.reflection_json || {};
+        const focusLine = body.focus_today || body.summary || "Keep the current recommendation short and focused.";
+        const cautionLine = body.watch_out_for || body.caution_note || body.alignment || "Stay with the current focus and notice where mistakes repeat.";
+        const varietyLine = body.optional_variety || (
+          body.alternative_app
+            ? `${titleCase(body.alternative_app)} would be the closest alternative if the learner wants a change of pace.`
+            : "No nearby alternative is standing out right now."
+        );
+        const confidenceLine = body.confidence_note || "The coach is reasonably confident, but this is still based on limited evidence.";
+        const titleLine = body.encouragement || `Teacher note after ${reflection.guided_session_count || "recent"} guided sessions`;
         section.classList.remove("hidden");
         document.getElementById("reflection-title").textContent =
-          `Teacher note after ${reflection.guided_session_count || "recent"} guided sessions`;
+          titleLine;
         document.getElementById("reflection-subtitle").textContent =
           remaining > 0
             ? `The next LLM reflection will appear after ${remaining} more guided ${remaining === 1 ? "session" : "sessions"}.`
@@ -475,12 +484,10 @@
         document.getElementById("reflection-badge").textContent = "LLM";
         document.getElementById("reflection-badge").className =
           "rounded-full bg-violet-100 px-3 py-1 text-xs font-semibold text-violet-700";
-        document.getElementById("reflection-summary").textContent = body.summary || "—";
-        document.getElementById("reflection-alignment").textContent = body.alignment || "The current recommendation still looks reasonable.";
-        document.getElementById("reflection-alternative").textContent = body.alternative_app
-          ? `${titleCase(body.alternative_app)} is the closest alternative if the learner wants variety.`
-          : "No nearby alternative is standing out right now.";
-        document.getElementById("reflection-confidence").textContent = body.confidence_note || "—";
+        document.getElementById("reflection-focus").textContent = focusLine;
+        document.getElementById("reflection-caution").textContent = cautionLine;
+        document.getElementById("reflection-alternative").textContent = varietyLine;
+        document.getElementById("reflection-confidence").textContent = confidenceLine;
         overview.textContent = remaining > 0 ? `${remaining} to go` : "Ready";
       }
 

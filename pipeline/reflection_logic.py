@@ -17,7 +17,7 @@ from recommendation_logic import (
 )
 
 
-REFLECTION_PROMPT_VERSION = "stage3b_v1"
+REFLECTION_PROMPT_VERSION = "stage3b_v2"
 DEFAULT_OPENAI_MODEL = "gpt-5-mini"
 
 
@@ -172,25 +172,33 @@ def build_reflection_context(
 
 def build_reflection_prompts(context: Dict) -> Tuple[str, str]:
     system_prompt = (
-        "You are a reflective learning-analytics assistant for KALS. "
+        "You are a warm, concise teacher-coach for KALS. "
         "You are not allowed to replace the deterministic recommendation. "
-        "Your job is to explain, critique, and contextualize it. "
+        "Your job is to turn the current learner state into short, supportive coaching language. "
         "Use only the curated summary you are given. "
-        "Return compact JSON with keys: summary, alignment, evidence_bullets, "
-        "alternative_app, caution_note, confidence_note."
+        "Do not mention scores, ranking formulas, cross-app priority, deterministic policy names, "
+        "or system internals unless absolutely necessary. "
+        "Return compact JSON with exactly these keys: "
+        "focus_today, watch_out_for, encouragement, optional_variety, confidence_note."
     )
 
     user_prompt = (
-        "Review this deterministic KALS recommendation context.\n\n"
+        "Turn this deterministic KALS recommendation context into short learner-facing coaching.\n\n"
         "Tasks:\n"
-        "1. Explain why the current recommendation does or does not make sense.\n"
-        "2. Cite 2-3 concrete signals from the summary.\n"
-        "3. Optionally name one alternative app if the recommendation looks questionable.\n"
-        "4. Add one caution note if the current evidence is biased or incomplete.\n\n"
+        "1. Write one short `focus_today` line saying what to practice now.\n"
+        "2. Write one short `watch_out_for` line naming a likely confusion or weak area.\n"
+        "3. Write one short `encouragement` line in a teacher-like tone.\n"
+        "4. Optionally write one short `optional_variety` line offering a nearby alternative if the learner wants variety.\n"
+        "5. Write one short `confidence_note` line about how firm or tentative this coaching is.\n\n"
         "Guardrails:\n"
         "- Do not invent learner history.\n"
         "- Do not output a new command or handoff.\n"
         "- The deterministic recommendation remains the official decision.\n\n"
+        "Style:\n"
+        "- Keep each field to 1 sentence.\n"
+        "- Use plain learner-friendly language.\n"
+        "- Do not justify the recommendation like an analyst.\n"
+        "- Do not say things like 'the deterministic recommendation is coherent' or refer to scores unless essential.\n\n"
         f"Context JSON:\n{json.dumps(context, ensure_ascii=False, indent=2)}"
     )
     return system_prompt, user_prompt

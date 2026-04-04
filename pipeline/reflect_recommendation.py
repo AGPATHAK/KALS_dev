@@ -88,17 +88,14 @@ def print_text(result: dict) -> None:
     if result.get("reflection_json"):
         reflection = result["reflection_json"]
         print("\nLLM Reflection")
-        print(f"- summary: {reflection.get('summary')}")
-        print(f"- alignment: {reflection.get('alignment')}")
-        bullets = reflection.get("evidence_bullets") or []
-        if bullets:
-            print("- evidence:")
-            for bullet in bullets:
-                print(f"  - {bullet}")
-        if reflection.get("alternative_app"):
-            print(f"- alternative_app: {reflection['alternative_app']}")
-        if reflection.get("caution_note"):
-            print(f"- caution_note: {reflection['caution_note']}")
+        if reflection.get("focus_today"):
+            print(f"- focus_today: {reflection['focus_today']}")
+        if reflection.get("watch_out_for"):
+            print(f"- watch_out_for: {reflection['watch_out_for']}")
+        if reflection.get("encouragement"):
+            print(f"- encouragement: {reflection['encouragement']}")
+        if reflection.get("optional_variety"):
+            print(f"- optional_variety: {reflection['optional_variety']}")
         if reflection.get("confidence_note"):
             print(f"- confidence_note: {reflection['confidence_note']}")
     elif result.get("output_text"):
