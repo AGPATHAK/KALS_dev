@@ -7,79 +7,157 @@
   <script src="https://cdn.tailwindcss.com"></script>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=Noto+Sans+Kannada:wght@500;700&display=swap" rel="stylesheet" />
   <style>
+    :root {
+      --page-bg: #f2f7f2;
+      --page-tint: rgba(16, 185, 129, 0.14);
+      --page-tint-soft: rgba(14, 116, 144, 0.12);
+      --panel-border: rgba(148, 163, 184, 0.22);
+      --panel-shadow: 0 18px 50px rgba(15, 23, 42, 0.08), 0 8px 18px rgba(15, 23, 42, 0.04);
+    }
     body { font-family: Inter, system-ui, sans-serif; }
     .kn { font-family: 'Noto Sans Kannada', Inter, system-ui, sans-serif; }
-    .shadow-soft { box-shadow: 0 10px 32px rgba(15, 23, 42, 0.08), 0 3px 10px rgba(15, 23, 42, 0.05); }
+    .shadow-soft { box-shadow: var(--panel-shadow); }
+    .panel {
+      background: rgba(255, 255, 255, 0.88);
+      backdrop-filter: blur(18px);
+      border: 1px solid var(--panel-border);
+    }
+    .page-glow {
+      background:
+        radial-gradient(circle at top left, var(--page-tint), transparent 30%),
+        radial-gradient(circle at top right, var(--page-tint-soft), transparent 28%),
+        linear-gradient(180deg, #f8fbf8 0%, var(--page-bg) 100%);
+    }
+    .metric-card {
+      background: linear-gradient(180deg, rgba(255,255,255,0.92) 0%, rgba(248,250,252,0.9) 100%);
+      border: 1px solid rgba(226, 232, 240, 0.95);
+    }
+    .app-card {
+      position: relative;
+      overflow: hidden;
+      transition: transform 180ms ease, border-color 180ms ease, box-shadow 180ms ease, background 180ms ease;
+    }
+    .app-card:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 16px 30px rgba(15, 23, 42, 0.08);
+    }
+    .app-card::before {
+      content: "";
+      position: absolute;
+      inset: 0 auto 0 0;
+      width: 4px;
+      border-radius: 999px;
+      background: var(--accent, #0f766e);
+    }
+    .recommended-app {
+      border-color: rgba(5, 150, 105, 0.45);
+      background: linear-gradient(180deg, rgba(236, 253, 245, 0.96) 0%, rgba(255, 255, 255, 0.98) 100%);
+      box-shadow: 0 18px 34px rgba(16, 185, 129, 0.14);
+    }
+    details > summary::-webkit-details-marker { display: none; }
   </style>
 </head>
-<body class="bg-slate-100 text-slate-900 min-h-screen">
-  <main class="max-w-4xl mx-auto p-6 md:p-8 space-y-6">
-    <header class="flex items-center gap-3">
-      <div class="text-xl">🕉️</div>
-      <div>
-        <h1 class="text-2xl font-bold">KALS Coach Hub</h1>
-        <p class="text-sm text-slate-600">Launch recommended practice without leaving the browser.</p>
+<body class="page-glow text-slate-900 min-h-screen">
+  <main class="max-w-5xl mx-auto p-5 md:p-8 space-y-6">
+    <header class="panel shadow-soft rounded-[2rem] px-6 py-5 md:px-8 md:py-6">
+      <div class="flex flex-col gap-5 md:flex-row md:items-center md:justify-between">
+        <div class="flex items-start gap-4">
+          <div class="grid h-12 w-12 place-items-center rounded-2xl bg-emerald-600/10 text-2xl">🕉️</div>
+          <div>
+            <p class="text-xs font-semibold uppercase tracking-[0.28em] text-emerald-700">Coach Console</p>
+            <h1 class="text-3xl font-bold text-slate-950 mt-2">KALS Coach Hub</h1>
+            <p class="text-sm text-slate-600 mt-2 max-w-2xl">See the next best practice step, launch it fast, and keep coaching context visible while the learner works.</p>
+          </div>
+        </div>
+        <div class="grid grid-cols-2 gap-3 sm:grid-cols-3 md:min-w-[22rem]">
+          <div class="metric-card rounded-2xl p-4">
+            <div class="text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-500">Status</div>
+            <div id="overview-status" class="mt-2 text-lg font-semibold text-slate-900">Idle</div>
+          </div>
+          <div class="metric-card rounded-2xl p-4">
+            <div class="text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-500">Next App</div>
+            <div id="overview-next-app" class="mt-2 text-lg font-semibold text-slate-900">—</div>
+          </div>
+          <div class="metric-card rounded-2xl p-4 col-span-2 sm:col-span-1">
+            <div class="text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-500">Reflection</div>
+            <div id="overview-reflection" class="mt-2 text-lg font-semibold text-slate-900">Waiting</div>
+          </div>
+        </div>
       </div>
     </header>
 
-    <section class="bg-white rounded-3xl shadow-soft p-6 md:p-8 space-y-5">
-      <div class="flex items-start justify-between gap-4">
+    <section class="panel rounded-[2rem] shadow-soft p-6 md:p-8 space-y-6">
+      <div class="grid gap-6 lg:grid-cols-[minmax(0,1.4fr)_minmax(18rem,0.8fr)] lg:items-start">
         <div>
-          <p class="text-xs font-semibold uppercase tracking-[0.2em] text-emerald-700">Current Recommendation</p>
-          <h2 id="recommendation-title" class="text-2xl font-bold mt-2">No pending recommendation</h2>
+          <p class="text-xs font-semibold uppercase tracking-[0.24em] text-emerald-700">Current Recommendation</p>
+          <h2 id="recommendation-title" class="text-3xl font-bold mt-3 text-slate-950">No pending recommendation</h2>
           <p id="recommendation-subtitle" class="text-sm text-slate-600 mt-2">
             Deliver a recommendation from the pipeline, then come back here to launch it.
           </p>
+          <div class="mt-5 flex flex-wrap items-center gap-3">
+            <div id="recommendation-badge" class="rounded-full bg-slate-200 px-3 py-1 text-xs font-semibold text-slate-600">
+              Idle
+            </div>
+            <div id="recommendation-freshness" class="text-xs font-medium uppercase tracking-[0.2em] text-slate-400">
+              Waiting for coach activity
+            </div>
+          </div>
+          <div class="grid md:grid-cols-3 gap-4 mt-6">
+            <div class="metric-card rounded-2xl p-4">
+              <div class="text-xs uppercase tracking-wide text-slate-500">Target App</div>
+              <div id="target-app" class="text-xl font-semibold mt-2">—</div>
+            </div>
+            <div class="metric-card rounded-2xl p-4">
+              <div class="text-xs uppercase tracking-wide text-slate-500">Session Size</div>
+              <div id="target-size" class="text-xl font-semibold mt-2">—</div>
+            </div>
+            <div class="metric-card rounded-2xl p-4">
+              <div class="text-xs uppercase tracking-wide text-slate-500">Why Now</div>
+              <div id="target-policy" class="text-base font-semibold mt-2 leading-6">—</div>
+            </div>
+          </div>
         </div>
-        <div id="recommendation-badge" class="rounded-full bg-slate-200 px-3 py-1 text-xs font-semibold text-slate-600">
-          Idle
-        </div>
-      </div>
-
-      <div class="grid md:grid-cols-3 gap-4">
-        <div class="rounded-2xl border border-slate-200 bg-slate-50 p-4">
-          <div class="text-xs uppercase tracking-wide text-slate-500">Target App</div>
-          <div id="target-app" class="text-xl font-semibold mt-2">—</div>
-        </div>
-        <div class="rounded-2xl border border-slate-200 bg-slate-50 p-4">
-          <div class="text-xs uppercase tracking-wide text-slate-500">Session Size</div>
-          <div id="target-size" class="text-xl font-semibold mt-2">—</div>
-        </div>
-        <div class="rounded-2xl border border-slate-200 bg-slate-50 p-4">
-          <div class="text-xs uppercase tracking-wide text-slate-500">Why Now</div>
-          <div id="target-policy" class="text-xl font-semibold mt-2">—</div>
+        <div class="rounded-3xl border border-emerald-200/80 bg-emerald-50/85 p-5 space-y-4">
+          <div class="flex items-center justify-between gap-3">
+            <div>
+              <p class="text-xs font-semibold uppercase tracking-[0.2em] text-emerald-700">Next Step</p>
+              <h3 class="text-xl font-bold text-slate-950 mt-2">Launch the guided session</h3>
+            </div>
+            <div class="rounded-full bg-white/90 px-3 py-1 text-xs font-semibold text-emerald-700">Recommended flow</div>
+          </div>
+          <p id="recommendation-note" class="text-sm text-emerald-950/75">
+            The recommended session opens in a new tab so this hub stays available while you practice.
+          </p>
+          <div class="flex flex-col gap-3">
+            <button id="start-recommended-btn"
+              class="w-full rounded-2xl bg-emerald-700 px-5 py-3.5 text-white font-semibold hover:bg-emerald-800 disabled:bg-slate-300 disabled:text-slate-500 disabled:cursor-not-allowed">
+              Start Recommended Session
+            </button>
+            <div class="grid sm:grid-cols-3 gap-3">
+              <button id="refresh-btn"
+                class="rounded-2xl border border-white/80 bg-white/80 px-4 py-3 font-semibold text-slate-700 hover:bg-white">
+                Refresh Now
+              </button>
+              <button id="reflect-btn"
+                class="rounded-2xl border border-violet-200 bg-white/80 px-4 py-3 font-semibold text-violet-700 hover:bg-violet-50">
+                Reflect Now
+              </button>
+              <button id="clear-pending-btn"
+                class="rounded-2xl border border-rose-200 bg-white/80 px-4 py-3 font-semibold text-rose-600 hover:bg-rose-50">
+                Dismiss Pending
+              </button>
+            </div>
+          </div>
         </div>
       </div>
 
       <div>
         <div class="text-xs uppercase tracking-wide text-slate-500 mb-2">Focus Items</div>
-        <div id="focus-items" class="flex flex-wrap gap-2">
+        <div id="focus-items" class="flex flex-wrap gap-2 min-h-[2.5rem]">
           <span class="text-sm text-slate-500">No focus items available.</span>
         </div>
       </div>
 
-      <div class="flex flex-col sm:flex-row gap-3">
-        <button id="start-recommended-btn"
-          class="flex-1 rounded-2xl bg-emerald-700 px-5 py-3 text-white font-semibold hover:bg-emerald-800 disabled:bg-slate-300 disabled:text-slate-500 disabled:cursor-not-allowed">
-          Start Recommended Session
-        </button>
-        <button id="refresh-btn"
-          class="rounded-2xl border border-slate-300 px-5 py-3 font-semibold hover:bg-slate-50">
-          Refresh Now
-        </button>
-        <button id="reflect-btn"
-          class="rounded-2xl border border-violet-200 px-5 py-3 font-semibold text-violet-700 hover:bg-violet-50">
-          Reflect Now
-        </button>
-        <button id="clear-pending-btn"
-          class="rounded-2xl border border-rose-200 px-5 py-3 font-semibold text-rose-600 hover:bg-rose-50">
-          Dismiss Pending
-        </button>
-      </div>
-
-      <p id="recommendation-note" class="text-sm text-slate-500">
-        The recommended session opens in a new tab so this hub stays available while you practice.
-      </p>
       <div id="refresh-status"
         class="hidden rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-600">
       </div>
@@ -88,7 +166,7 @@
       </p>
     </section>
 
-    <section id="last-session-section" class="hidden bg-white rounded-3xl shadow-soft p-6 md:p-8 space-y-5">
+    <section id="last-session-section" class="hidden panel rounded-[2rem] shadow-soft p-6 md:p-8 space-y-5">
       <div>
         <p class="text-xs font-semibold uppercase tracking-[0.2em] text-sky-700">Last Session</p>
         <h2 id="last-session-title" class="text-xl font-bold mt-2">No recent session yet</h2>
@@ -98,26 +176,26 @@
       </div>
 
       <div class="grid md:grid-cols-4 gap-4">
-        <div class="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+        <div class="metric-card rounded-2xl p-4">
           <div class="text-xs uppercase tracking-wide text-slate-500">Accuracy</div>
           <div id="last-session-accuracy" class="text-xl font-semibold mt-2">—</div>
         </div>
-        <div class="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+        <div class="metric-card rounded-2xl p-4">
           <div class="text-xs uppercase tracking-wide text-slate-500">Correct</div>
           <div id="last-session-correct" class="text-xl font-semibold mt-2">—</div>
         </div>
-        <div class="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+        <div class="metric-card rounded-2xl p-4">
           <div class="text-xs uppercase tracking-wide text-slate-500">Wrong</div>
           <div id="last-session-wrong" class="text-xl font-semibold mt-2">—</div>
         </div>
-        <div class="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+        <div class="metric-card rounded-2xl p-4">
           <div class="text-xs uppercase tracking-wide text-slate-500">Mode</div>
           <div id="last-session-mode" class="text-xl font-semibold mt-2">—</div>
         </div>
       </div>
     </section>
 
-    <section id="reflection-section" class="hidden bg-white rounded-3xl shadow-soft p-6 md:p-8 space-y-5">
+    <section id="reflection-section" class="hidden panel rounded-[2rem] shadow-soft p-6 md:p-8 space-y-5">
       <div class="flex items-start justify-between gap-4">
         <div>
           <p class="text-xs font-semibold uppercase tracking-[0.2em] text-violet-700">Coach Reflection</p>
@@ -132,29 +210,29 @@
       </div>
 
       <div class="grid md:grid-cols-2 gap-4">
-        <div class="rounded-2xl border border-slate-200 bg-slate-50 p-4">
-          <div class="text-xs uppercase tracking-wide text-slate-500">Coach Summary</div>
+        <div class="metric-card rounded-2xl p-4">
+          <div class="text-xs uppercase tracking-wide text-slate-500">What The Coach Notices</div>
           <div id="reflection-summary" class="text-sm text-slate-700 mt-2 leading-6">—</div>
         </div>
-        <div class="rounded-2xl border border-slate-200 bg-slate-50 p-4">
-          <div class="text-xs uppercase tracking-wide text-slate-500">Why It Fits</div>
+        <div class="metric-card rounded-2xl p-4">
+          <div class="text-xs uppercase tracking-wide text-slate-500">Why This Still Fits</div>
           <div id="reflection-alignment" class="text-sm text-slate-700 mt-2 leading-6">—</div>
         </div>
       </div>
 
       <div class="grid md:grid-cols-2 gap-4">
-        <div class="rounded-2xl border border-slate-200 bg-slate-50 p-4">
-          <div class="text-xs uppercase tracking-wide text-slate-500">Alternative Worth Watching</div>
+        <div class="metric-card rounded-2xl p-4">
+          <div class="text-xs uppercase tracking-wide text-slate-500">Another Option</div>
           <div id="reflection-alternative" class="text-sm text-slate-700 mt-2">—</div>
         </div>
-        <div class="rounded-2xl border border-slate-200 bg-slate-50 p-4">
-          <div class="text-xs uppercase tracking-wide text-slate-500">Confidence Note</div>
+        <div class="metric-card rounded-2xl p-4">
+          <div class="text-xs uppercase tracking-wide text-slate-500">How Certain This Is</div>
           <div id="reflection-confidence" class="text-sm text-slate-700 mt-2">—</div>
         </div>
       </div>
     </section>
 
-    <section class="bg-white rounded-3xl shadow-soft p-6 md:p-8 space-y-5">
+    <section class="panel rounded-[2rem] shadow-soft p-6 md:p-8 space-y-5">
       <div>
         <p class="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">Practice Launcher</p>
         <h2 class="text-xl font-bold mt-2">Open Any App</h2>
@@ -164,55 +242,80 @@
       </div>
 
       <div class="grid sm:grid-cols-2 gap-4">
-        <button data-app="alphabet" class="app-launch rounded-2xl border border-slate-200 bg-slate-50 p-4 text-left hover:bg-slate-100">
-          <div class="text-lg font-semibold">Alphabet</div>
-          <div class="text-sm text-slate-600 mt-1">Letters and weak-letter review</div>
+        <button data-app="alphabet" data-accent="#0f766e" class="app-launch app-card rounded-3xl border border-slate-200 bg-slate-50/90 p-5 text-left" style="--accent:#0f766e">
+          <div class="flex items-center justify-between gap-3">
+            <div class="text-lg font-semibold">Alphabet</div>
+            <div class="app-launch-badge hidden rounded-full bg-emerald-100 px-3 py-1 text-xs font-semibold text-emerald-700">Recommended</div>
+          </div>
+          <div class="text-sm text-slate-600 mt-2">Letters and weak-letter review</div>
+          <div class="app-launch-meta text-xs text-slate-500 mt-3">Open for practice</div>
         </button>
-        <button data-app="matras" class="app-launch rounded-2xl border border-slate-200 bg-slate-50 p-4 text-left hover:bg-slate-100">
-          <div class="text-lg font-semibold">Matras</div>
-          <div class="text-sm text-slate-600 mt-1">CV patterns and vowel sign practice</div>
+        <button data-app="matras" data-accent="#2563eb" class="app-launch app-card rounded-3xl border border-slate-200 bg-slate-50/90 p-5 text-left" style="--accent:#2563eb">
+          <div class="flex items-center justify-between gap-3">
+            <div class="text-lg font-semibold">Matras</div>
+            <div class="app-launch-badge hidden rounded-full bg-emerald-100 px-3 py-1 text-xs font-semibold text-emerald-700">Recommended</div>
+          </div>
+          <div class="text-sm text-slate-600 mt-2">CV patterns and vowel sign practice</div>
+          <div class="app-launch-meta text-xs text-slate-500 mt-3">Open for practice</div>
         </button>
-        <button data-app="conjuncts" class="app-launch rounded-2xl border border-slate-200 bg-slate-50 p-4 text-left hover:bg-slate-100">
-          <div class="text-lg font-semibold">Conjuncts</div>
-          <div class="text-sm text-slate-600 mt-1">Compound consonant recognition</div>
+        <button data-app="conjuncts" data-accent="#7c3aed" class="app-launch app-card rounded-3xl border border-slate-200 bg-slate-50/90 p-5 text-left" style="--accent:#7c3aed">
+          <div class="flex items-center justify-between gap-3">
+            <div class="text-lg font-semibold">Conjuncts</div>
+            <div class="app-launch-badge hidden rounded-full bg-emerald-100 px-3 py-1 text-xs font-semibold text-emerald-700">Recommended</div>
+          </div>
+          <div class="text-sm text-slate-600 mt-2">Compound consonant recognition</div>
+          <div class="app-launch-meta text-xs text-slate-500 mt-3">Open for practice</div>
         </button>
-        <button data-app="words" class="app-launch rounded-2xl border border-slate-200 bg-slate-50 p-4 text-left hover:bg-slate-100">
-          <div class="text-lg font-semibold">Words</div>
-          <div class="text-sm text-slate-600 mt-1">Self-scored whole-word recognition</div>
+        <button data-app="words" data-accent="#ea580c" class="app-launch app-card rounded-3xl border border-slate-200 bg-slate-50/90 p-5 text-left" style="--accent:#ea580c">
+          <div class="flex items-center justify-between gap-3">
+            <div class="text-lg font-semibold">Words</div>
+            <div class="app-launch-badge hidden rounded-full bg-emerald-100 px-3 py-1 text-xs font-semibold text-emerald-700">Recommended</div>
+          </div>
+          <div class="text-sm text-slate-600 mt-2">Self-scored whole-word recognition</div>
+          <div class="app-launch-meta text-xs text-slate-500 mt-3">Open for practice</div>
         </button>
       </div>
     </section>
 
-    <section class="bg-white rounded-3xl shadow-soft p-6 md:p-8 space-y-5">
+    <section class="panel rounded-[2rem] shadow-soft p-6 md:p-8 space-y-5">
       <div>
         <p class="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">After Practice</p>
         <h2 class="text-xl font-bold mt-2">Refresh The Coach</h2>
         <p class="text-sm text-slate-600 mt-2">
-          Best experience: start the local coach control server once in a separate terminal, then use the <span class="font-semibold">Refresh Recommendation</span> button above after each practice run. If that helper is not running, use the fallback commands below.
+          Best experience: start the local coach control server once in a separate terminal, then use the refresh controls above after each practice run. The fallback commands are still here when you need them, but they no longer need to be the center of the UI.
         </p>
       </div>
 
-      <div class="grid gap-4">
-        <div class="rounded-2xl border border-slate-200 bg-slate-50 p-4">
-          <div class="text-xs uppercase tracking-wide text-slate-500 mb-2">Start Once Per Practice Block</div>
-          <pre class="overflow-x-auto text-sm text-slate-800"><code>.venv/bin/python pipeline/coach_control_server.py</code></pre>
+      <details class="rounded-3xl border border-slate-200 bg-slate-50/90 p-5">
+        <summary class="flex cursor-pointer list-none items-center justify-between gap-3">
+          <div>
+            <div class="text-sm font-semibold text-slate-900">Show fallback terminal workflow</div>
+            <div class="text-xs text-slate-500 mt-1">Use these if the local control helper is unavailable.</div>
+          </div>
+          <div class="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">Expand</div>
+        </summary>
+        <div class="grid gap-4 mt-5">
+          <div class="rounded-2xl border border-slate-200 bg-white p-4">
+            <div class="text-xs uppercase tracking-wide text-slate-500 mb-2">Start Once Per Practice Block</div>
+            <pre class="overflow-x-auto text-sm text-slate-800"><code>.venv/bin/python pipeline/coach_control_server.py</code></pre>
+          </div>
+          <div class="rounded-2xl border border-slate-200 bg-white p-4">
+            <div class="text-xs uppercase tracking-wide text-slate-500 mb-2">Ingest Latest Practice Data</div>
+            <pre class="overflow-x-auto text-sm text-slate-800"><code>.venv/bin/python pipeline/ingest_events.py</code></pre>
+          </div>
+          <div class="rounded-2xl border border-slate-200 bg-white p-4">
+            <div class="text-xs uppercase tracking-wide text-slate-500 mb-2">Generate and Deliver the Next Recommendation</div>
+            <pre class="overflow-x-auto text-sm text-slate-800"><code>.venv/bin/python pipeline/deliver_recommendation_handoff.py --save-run</code></pre>
+          </div>
+          <div class="rounded-2xl border border-slate-200 bg-white p-4">
+            <div class="text-xs uppercase tracking-wide text-slate-500 mb-2">Optional: Inspect The Updated Evaluation</div>
+            <pre class="overflow-x-auto text-sm text-slate-800"><code>.venv/bin/python pipeline/evaluate_guided_sessions.py --refresh-views</code></pre>
+          </div>
         </div>
-        <div class="rounded-2xl border border-slate-200 bg-slate-50 p-4">
-          <div class="text-xs uppercase tracking-wide text-slate-500 mb-2">Ingest Latest Practice Data</div>
-          <pre class="overflow-x-auto text-sm text-slate-800"><code>.venv/bin/python pipeline/ingest_events.py</code></pre>
-        </div>
-        <div class="rounded-2xl border border-slate-200 bg-slate-50 p-4">
-          <div class="text-xs uppercase tracking-wide text-slate-500 mb-2">Generate and Deliver the Next Recommendation</div>
-          <pre class="overflow-x-auto text-sm text-slate-800"><code>.venv/bin/python pipeline/deliver_recommendation_handoff.py --save-run</code></pre>
-        </div>
-        <div class="rounded-2xl border border-slate-200 bg-slate-50 p-4">
-          <div class="text-xs uppercase tracking-wide text-slate-500 mb-2">Optional: Inspect The Updated Evaluation</div>
-          <pre class="overflow-x-auto text-sm text-slate-800"><code>.venv/bin/python pipeline/evaluate_guided_sessions.py --refresh-views</code></pre>
-        </div>
-      </div>
+      </details>
     </section>
 
-    <section class="bg-white rounded-3xl shadow-soft p-6 md:p-8 space-y-4">
+    <section class="panel rounded-[2rem] shadow-soft p-6 md:p-8 space-y-4">
       <p class="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">How This Fits</p>
       <div class="text-sm text-slate-600 space-y-2">
         <p>The coach hub reads the current recommendation handoff from browser storage and launches the right app from the browser.</p>
@@ -259,6 +362,20 @@
         return String(value).charAt(0).toUpperCase() + String(value).slice(1);
       }
 
+      function timeAgo(value) {
+        if (!value) return "Waiting for activity";
+        const date = new Date(value);
+        if (Number.isNaN(date.getTime())) return "Waiting for activity";
+        const diffMs = Date.now() - date.getTime();
+        const diffMinutes = Math.max(0, Math.round(diffMs / 60000));
+        if (diffMinutes < 1) return "Updated just now";
+        if (diffMinutes < 60) return `Updated ${diffMinutes}m ago`;
+        const diffHours = Math.round(diffMinutes / 60);
+        if (diffHours < 24) return `Updated ${diffHours}h ago`;
+        const diffDays = Math.round(diffHours / 24);
+        return `Updated ${diffDays}d ago`;
+      }
+
       function humanizePolicy(selectionPolicy, selectionReason) {
         if (selectionReason) {
           return selectionReason
@@ -270,6 +387,13 @@
         if (selectionPolicy === "continue_recent_app") return "recent work still needs follow-up";
         if (selectionPolicy === "highest_priority") return "strongest current review need";
         return "current coach recommendation";
+      }
+
+      function humanizeMode(mode) {
+        if (!mode) return "Practice";
+        return String(mode)
+          .replace(/[_-]+/g, " ")
+          .replace(/\b\w/g, (m) => m.toUpperCase());
       }
 
       function setRefreshStatus(message, tone = "neutral") {
@@ -332,8 +456,11 @@
         const section = document.getElementById("reflection-section");
         const reflection = readJson(LATEST_REFLECTION_KEY);
         const remaining = guidedSessionsUntilReflection();
+        const overview = document.getElementById("overview-reflection");
         if (!reflection?.reflection_json) {
           section.classList.add("hidden");
+          overview.textContent =
+            remaining > 0 ? `${remaining} to go` : "Ready";
           return;
         }
 
@@ -349,9 +476,83 @@
         document.getElementById("reflection-badge").className =
           "rounded-full bg-violet-100 px-3 py-1 text-xs font-semibold text-violet-700";
         document.getElementById("reflection-summary").textContent = body.summary || "—";
-        document.getElementById("reflection-alignment").textContent = body.alignment || "—";
-        document.getElementById("reflection-alternative").textContent = body.alternative_app || "No alternative flagged";
+        document.getElementById("reflection-alignment").textContent = body.alignment || "The current recommendation still looks reasonable.";
+        document.getElementById("reflection-alternative").textContent = body.alternative_app
+          ? `${titleCase(body.alternative_app)} is the closest alternative if the learner wants variety.`
+          : "No nearby alternative is standing out right now.";
         document.getElementById("reflection-confidence").textContent = body.confidence_note || "—";
+        overview.textContent = remaining > 0 ? `${remaining} to go` : "Ready";
+      }
+
+      function renderOverview({ activeRecommendation = null, hasPending = false, sessionSummary = null } = {}) {
+        const status = document.getElementById("overview-status");
+        const nextApp = document.getElementById("overview-next-app");
+        const freshness = document.getElementById("recommendation-freshness");
+        const app = activeRecommendation?.target_app || activeRecommendation?.app_request?.app || null;
+        status.textContent = hasPending ? "Guided" : activeRecommendation ? "Saved" : "Idle";
+        nextApp.textContent = app ? titleCase(app) : "—";
+        freshness.textContent = timeAgo(
+          activeRecommendation?.created_at_utc ||
+          activeRecommendation?.generated_at_utc ||
+          sessionSummary?.completed_at_utc
+        );
+      }
+
+      function summarizeAppEvents() {
+        const events = readJson("kjt_events") || [];
+        const byApp = {};
+        events.forEach((event) => {
+          const app = event?.app;
+          if (!app) return;
+          if (!byApp[app]) {
+            byApp[app] = { attempts: 0, passes: 0, latest: null };
+          }
+          byApp[app].attempts += 1;
+          if (event.result === "pass") byApp[app].passes += 1;
+          const ts = event.timestamp_utc || event.timestamp || null;
+          if (ts && (!byApp[app].latest || ts > byApp[app].latest)) {
+            byApp[app].latest = ts;
+          }
+        });
+        return byApp;
+      }
+
+      function renderAppLauncherRecommendation(app) {
+        const sessionSummary = readJson(SESSION_COMPLETE_EVENT_KEY);
+        const appStats = summarizeAppEvents();
+        document.querySelectorAll(".app-launch").forEach((button) => {
+          const isRecommended = Boolean(app) && button.dataset.app === app;
+          button.classList.toggle("recommended-app", isRecommended);
+          const badge = button.querySelector(".app-launch-badge");
+          const meta = button.querySelector(".app-launch-meta");
+          const thisApp = button.dataset.app;
+          const stats = appStats[thisApp];
+          const isRecent = sessionSummary?.app === thisApp;
+          if (badge) {
+            badge.classList.toggle("hidden", false);
+            if (isRecommended) {
+              badge.textContent = "Coach Pick";
+              badge.className = "app-launch-badge rounded-full bg-emerald-100 px-3 py-1 text-xs font-semibold text-emerald-700";
+            } else if (isRecent) {
+              badge.textContent = "Recent";
+              badge.className = "app-launch-badge rounded-full bg-sky-100 px-3 py-1 text-xs font-semibold text-sky-700";
+            } else {
+              badge.textContent = "Practice";
+              badge.className = "app-launch-badge rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-600";
+            }
+          }
+          if (meta) {
+            if (stats?.attempts) {
+              const accuracy = Math.round((stats.passes / stats.attempts) * 100);
+              const freshness = stats.latest ? timeAgo(stats.latest).replace(/^Updated /, "") : "no recent activity";
+              meta.textContent = `${accuracy}% across ${stats.attempts} attempts · ${freshness}`;
+            } else if (isRecent) {
+              meta.textContent = "Most recently practiced";
+            } else {
+              meta.textContent = "Open for practice";
+            }
+          }
+        });
       }
 
       function describeRefreshOutcome({ sourceApp, nextApp, insertedCount, sameApp, isAuto }) {
@@ -519,8 +720,8 @@
           `${titleCase(summary.app)} session complete`;
         document.getElementById("last-session-subtitle").textContent =
           summary.intervention_id
-            ? "This was an agent-guided session. The coach used it to refresh the next recommendation."
-            : "This was a normal session. The coach used it to refresh the next recommendation.";
+            ? `Guided ${titleCase(summary.app)} practice just finished. The coach has already folded it into the next step.`
+            : `${titleCase(summary.app)} practice just finished. The coach has already folded it into the next step.`;
         document.getElementById("last-session-accuracy").textContent =
           summary.accuracy_pct != null ? `${summary.accuracy_pct}%` : "—";
         document.getElementById("last-session-correct").textContent =
@@ -528,7 +729,7 @@
         document.getElementById("last-session-wrong").textContent =
           summary.wrong != null ? String(summary.wrong) : "—";
         document.getElementById("last-session-mode").textContent =
-          summary.mode ? String(summary.mode) : "—";
+          humanizeMode(summary.mode);
       }
 
       function renderRecommendation() {
@@ -558,6 +759,8 @@
           startBtn.dataset.targetApp = "";
           note.textContent = "When a pending recommendation exists, the recommended session will open in a new tab from this hub.";
           renderFocusItems([]);
+          renderOverview({ activeRecommendation: null, hasPending: false, sessionSummary: readJson(SESSION_COMPLETE_EVENT_KEY) });
+          renderAppLauncherRecommendation(null);
           renderLastSession();
           renderReflection();
           return;
@@ -579,6 +782,8 @@
           ? "Start this guided session if you want to follow the coach's next suggested step."
           : "This is only the latest saved recommendation. A fresh pending session will appear after the next coach refresh.";
         renderFocusItems(active.focus_items || []);
+        renderOverview({ activeRecommendation: active, hasPending, sessionSummary: readJson(SESSION_COMPLETE_EVENT_KEY) });
+        renderAppLauncherRecommendation(app);
         renderLastSession();
         renderReflection();
       }
