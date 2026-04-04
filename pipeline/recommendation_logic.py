@@ -13,6 +13,8 @@ ANALYTICS_SQL_PATH = REPO_ROOT / "data" / "analytics_views.sql"
 SCHEMA_SQL_PATH = REPO_ROOT / "data" / "schema.sql"
 RECOMMENDER_VERSION = "stage3a_v2"
 RECOMMENDATION_CONTRACT_VERSION = "kals.recommendation.v1"
+ANTI_BOREDOM_REPEAT_THRESHOLD = 5
+ANTI_BOREDOM_WINDOW = 6
 
 
 def refresh_views_connection(conn: duckdb.DuckDBPyConnection) -> None:
@@ -83,7 +85,7 @@ def fetch_recommendation_inputs(
         """
     ).fetchall()
 
-    recommended_app, selection_policy, selection_reason = choose_recommended_app(app_rows)
+    recommended_app, selection_policy, selection_reason = choose_recommended_app(conn, app_rows)
 
     app_ranking = [
         (
@@ -121,7 +123,24 @@ def fetch_recommendation_inputs(
     return recommended_app, app_ranking, top_items, selection_policy, selection_reason
 
 
-def choose_recommended_app(app_rows: List[tuple]) -> Tuple[Optional[tuple], str, str]:
+def fetch_recent_recommended_apps(
+    conn: duckdb.DuckDBPyConnection,
+    *,
+    limit: int = ANTI_BOREDOM_WINDOW,
+) -> List[str]:
+    rows = conn.execute(
+        """
+        SELECT recommended_app
+        FROM recommendation_runs
+        ORDER BY created_at_utc DESC
+        LIMIT ?
+        """,
+        [limit],
+    ).fetchall()
+    return [row[0] for row in rows if row and row[0]]
+
+
+def choose_recommended_app(conn: duckdb.DuckDBPyConnection, app_rows: List[tuple]) -> Tuple[Optional[tuple], str, str]:
     if not app_rows:
         return None, "none", "no app recommendation is available yet"
 
@@ -145,6 +164,26 @@ def choose_recommended_app(app_rows: List[tuple]) -> Tuple[Optional[tuple], str,
             else:
                 reason = "continue the most recent app because it is newly introduced and still under-sampled"
             return row, "continue_recent_app", reason
+
+    recent_apps = fetch_recent_recommended_apps(conn)
+    top_row = app_rows[0]
+    top_app = top_row[0]
+    top_recent_count = sum(1 for app in recent_apps if app == top_app)
+    if top_recent_count >= ANTI_BOREDOM_REPEAT_THRESHOLD:
+        alternative_row = next((row for row in app_rows[1:] if row[7] > 0), None)
+        if alternative_row:
+            alternative_app = alternative_row[0]
+            if recent_apps and recent_apps[0] == alternative_app:
+                return (
+                    alternative_row,
+                    "anti_boredom_rotation",
+                    "stay with the recent alternate app briefly so practice does not become too repetitive",
+                )
+            return (
+                alternative_row,
+                "anti_boredom_rotation",
+                "switch briefly to a nearby app because the same recommendation has repeated too many times in a row",
+            )
 
     return app_rows[0], "highest_priority", "choose the app with the highest current cross-app priority score"
 
