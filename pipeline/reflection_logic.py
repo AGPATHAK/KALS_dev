@@ -17,7 +17,7 @@ from recommendation_logic import (
 )
 
 
-REFLECTION_PROMPT_VERSION = "stage3b_v2"
+REFLECTION_PROMPT_VERSION = "stage3b_v3"
 DEFAULT_OPENAI_MODEL = "gpt-5-mini"
 
 
@@ -179,7 +179,7 @@ def build_reflection_prompts(context: Dict) -> Tuple[str, str]:
         "Do not mention scores, ranking formulas, cross-app priority, deterministic policy names, "
         "or system internals unless absolutely necessary. "
         "Return compact JSON with exactly these keys: "
-        "focus_today, watch_out_for, encouragement, optional_variety, confidence_note."
+        "focus_today, watch_out_for, encouragement, optional_variety, stable_area, confidence_note."
     )
 
     user_prompt = (
@@ -189,7 +189,8 @@ def build_reflection_prompts(context: Dict) -> Tuple[str, str]:
         "2. Write one short `watch_out_for` line naming a likely confusion or weak area.\n"
         "3. Write one short `encouragement` line in a teacher-like tone.\n"
         "4. Optionally write one short `optional_variety` line offering a nearby alternative if the learner wants variety.\n"
-        "5. Write one short `confidence_note` line about how firm or tentative this coaching is.\n\n"
+        "5. Optionally write one short `stable_area` line naming an app or area that looks steady enough to skip for now.\n"
+        "6. Write one short `confidence_note` line about how firm or tentative this coaching is.\n\n"
         "Guardrails:\n"
         "- Do not invent learner history.\n"
         "- Do not output a new command or handoff.\n"

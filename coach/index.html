@@ -230,6 +230,13 @@
           <div id="reflection-alternative" class="text-sm text-slate-700 mt-2 leading-6">—</div>
         </div>
         <div class="metric-card rounded-2xl p-4">
+          <div class="text-xs uppercase tracking-wide text-slate-500">You Can Leave This For Now</div>
+          <div id="reflection-stable" class="text-sm text-slate-700 mt-2 leading-6">—</div>
+        </div>
+      </div>
+
+      <div class="grid md:grid-cols-1 gap-4">
+        <div class="metric-card rounded-2xl p-4">
           <div class="text-xs uppercase tracking-wide text-slate-500">How Sure The Coach Is</div>
           <div id="reflection-confidence" class="text-sm text-slate-700 mt-2 leading-6">—</div>
         </div>
@@ -469,6 +476,7 @@
             ? `${titleCase(body.alternative_app)} would be the closest alternative if the learner wants a change of pace.`
             : "No nearby alternative is standing out right now."
         );
+        const stableLine = body.stable_area || "No clearly settled area is standing out enough to skip completely right now.";
         const confidenceLine = body.confidence_note || "The coach is reasonably confident, but this is still based on limited evidence.";
         const titleLine = body.encouragement || `Teacher note after ${reflection.guided_session_count || "recent"} guided sessions`;
         section.classList.remove("hidden");
@@ -484,6 +492,7 @@
         document.getElementById("reflection-focus").textContent = focusLine;
         document.getElementById("reflection-caution").textContent = cautionLine;
         document.getElementById("reflection-alternative").textContent = varietyLine;
+        document.getElementById("reflection-stable").textContent = stableLine;
         document.getElementById("reflection-confidence").textContent = confidenceLine;
         overview.textContent = remaining > 0 ? `${remaining} to go` : "Ready";
       }

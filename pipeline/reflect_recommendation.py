@@ -96,6 +96,8 @@ def print_text(result: dict) -> None:
             print(f"- encouragement: {reflection['encouragement']}")
         if reflection.get("optional_variety"):
             print(f"- optional_variety: {reflection['optional_variety']}")
+        if reflection.get("stable_area"):
+            print(f"- stable_area: {reflection['stable_area']}")
         if reflection.get("confidence_note"):
             print(f"- confidence_note: {reflection['confidence_note']}")
     elif result.get("output_text"):
