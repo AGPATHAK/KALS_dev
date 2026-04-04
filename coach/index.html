@@ -260,6 +260,7 @@
           </div>
           <div class="text-sm text-slate-600 mt-2">Letters and weak-letter review</div>
           <div class="app-launch-meta text-xs text-slate-500 mt-3">Open for practice</div>
+          <div class="app-launch-context text-xs text-slate-400 mt-2">Coach context appears after refresh.</div>
         </button>
         <button data-app="matras" data-accent="#2563eb" class="app-launch app-card rounded-3xl border border-slate-200 bg-slate-50/90 p-5 text-left" style="--accent:#2563eb">
           <div class="flex items-center justify-between gap-3">
@@ -268,6 +269,7 @@
           </div>
           <div class="text-sm text-slate-600 mt-2">CV patterns and vowel sign practice</div>
           <div class="app-launch-meta text-xs text-slate-500 mt-3">Open for practice</div>
+          <div class="app-launch-context text-xs text-slate-400 mt-2">Coach context appears after refresh.</div>
         </button>
         <button data-app="conjuncts" data-accent="#7c3aed" class="app-launch app-card rounded-3xl border border-slate-200 bg-slate-50/90 p-5 text-left" style="--accent:#7c3aed">
           <div class="flex items-center justify-between gap-3">
@@ -276,6 +278,7 @@
           </div>
           <div class="text-sm text-slate-600 mt-2">Compound consonant recognition</div>
           <div class="app-launch-meta text-xs text-slate-500 mt-3">Open for practice</div>
+          <div class="app-launch-context text-xs text-slate-400 mt-2">Coach context appears after refresh.</div>
         </button>
         <button data-app="words" data-accent="#ea580c" class="app-launch app-card rounded-3xl border border-slate-200 bg-slate-50/90 p-5 text-left" style="--accent:#ea580c">
           <div class="flex items-center justify-between gap-3">
@@ -284,6 +287,7 @@
           </div>
           <div class="text-sm text-slate-600 mt-2">Self-scored whole-word recognition</div>
           <div class="app-launch-meta text-xs text-slate-500 mt-3">Open for practice</div>
+          <div class="app-launch-context text-xs text-slate-400 mt-2">Coach context appears after refresh.</div>
         </button>
       </div>
     </section>
@@ -332,6 +336,7 @@
     (() => {
       const LATEST_HANDOFF_KEY = "kals_latest_recommendation_handoff";
       const PENDING_HANDOFF_KEY = "kals_pending_recommendation_handoff";
+      const LATEST_RECOMMENDATION_PAYLOAD_KEY = "kals_latest_recommendation_payload";
       const SESSION_COMPLETE_EVENT_KEY = "kals_session_complete_event";
       const LATEST_REFLECTION_KEY = "kals_latest_llm_reflection";
       const GUIDED_SESSION_COUNT_KEY = "kals_guided_session_count";
@@ -511,6 +516,10 @@
         );
       }
 
+      function readLatestRecommendationPayload() {
+        return readJson(LATEST_RECOMMENDATION_PAYLOAD_KEY);
+      }
+
       function summarizeAppEvents() {
         const events = readJson("kjt_events") || [];
         const byApp = {};
@@ -533,6 +542,9 @@
       function renderAppLauncherRecommendation(app) {
         const sessionSummary = readJson(SESSION_COMPLETE_EVENT_KEY);
         const appStats = summarizeAppEvents();
+        const recommendationPayload = readLatestRecommendationPayload();
+        const ranking = recommendationPayload?.app_ranking || [];
+        const rankingMap = new Map(ranking.map((row, index) => [row.app, { ...row, rankIndex: index }]));
         document.querySelectorAll(".app-launch").forEach((button) => {
           const isRecommended = Boolean(app) && button.dataset.app === app;
           const isRecent = sessionSummary?.app === button.dataset.app;
@@ -540,13 +552,21 @@
           button.classList.toggle("recent-app", !isRecommended && isRecent);
           const badge = button.querySelector(".app-launch-badge");
           const meta = button.querySelector(".app-launch-meta");
+          const context = button.querySelector(".app-launch-context");
           const thisApp = button.dataset.app;
           const stats = appStats[thisApp];
+          const rank = rankingMap.get(thisApp);
           if (badge) {
             badge.classList.toggle("hidden", false);
             if (isRecommended) {
               badge.textContent = "Coach Pick";
               badge.className = "app-launch-badge rounded-full bg-emerald-100 px-3 py-1 text-xs font-semibold text-emerald-700";
+            } else if (rank?.rankIndex === 1) {
+              badge.textContent = "Strong Option";
+              badge.className = "app-launch-badge rounded-full bg-amber-100 px-3 py-1 text-xs font-semibold text-amber-700";
+            } else if (rank?.rankIndex === 2) {
+              badge.textContent = "Keep Warm";
+              badge.className = "app-launch-badge rounded-full bg-indigo-100 px-3 py-1 text-xs font-semibold text-indigo-700";
             } else if (isRecent) {
               badge.textContent = "Recent";
               badge.className = "app-launch-badge rounded-full bg-sky-100 px-3 py-1 text-xs font-semibold text-sky-700";
@@ -556,14 +576,38 @@
             }
           }
           if (meta) {
+            const parts = [];
+            if (rank?.accuracy_pct != null) {
+              parts.push(`${Math.round(rank.accuracy_pct)}% accuracy`);
+            } else if (stats?.attempts) {
+              parts.push(`${Math.round((stats.passes / stats.attempts) * 100)}% accuracy`);
+            }
             if (stats?.attempts) {
-              const accuracy = Math.round((stats.passes / stats.attempts) * 100);
-              const freshness = stats.latest ? timeAgo(stats.latest).replace(/^Updated /, "") : "no recent activity";
-              meta.textContent = `${accuracy}% across ${stats.attempts} attempts · ${freshness}`;
+              parts.push(`${stats.attempts} attempts`);
+            }
+            const freshness = stats?.latest ? timeAgo(stats.latest).replace(/^Updated /, "") : null;
+            if (freshness) {
+              parts.push(freshness);
+            }
+            if (parts.length) {
+              meta.textContent = parts.join(" · ");
             } else if (isRecent) {
               meta.textContent = "Most recently practiced";
             } else {
               meta.textContent = "Open for practice";
+            }
+          }
+          if (context) {
+            if (isRecommended && rank) {
+              context.textContent = `${rank.urgent_review_count} urgent item(s) and ${rank.review_candidate_count} review target(s) are driving this pick.`;
+            } else if (rank?.rankIndex === 1) {
+              context.textContent = "A strong nearby option if you want a second coach-aligned choice.";
+            } else if (rank?.rankIndex === 2) {
+              context.textContent = "Worth keeping in rotation, but not the main priority right now.";
+            } else if (isRecent) {
+              context.textContent = "You just practiced here, so this is easy to revisit if needed.";
+            } else {
+              context.textContent = "Available any time for free practice.";
             }
           }
         });
@@ -613,6 +657,7 @@
           if (payload.recommendation?.handoff) {
             localStorage.setItem(LATEST_HANDOFF_KEY, JSON.stringify(payload.recommendation.handoff));
             localStorage.setItem(PENDING_HANDOFF_KEY, JSON.stringify(payload.recommendation.handoff));
+            localStorage.setItem(LATEST_RECOMMENDATION_PAYLOAD_KEY, JSON.stringify(payload.recommendation));
           }
 
           renderRecommendation();
